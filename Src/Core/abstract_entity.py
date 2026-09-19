@@ -14,20 +14,11 @@ class abstract_entity(ABC):
     def id(self) -> str:
         """
         Возвращает id сущности.
-        Если не задан, то генерируется автоматически при первом обращении.
+        Генерируется автоматически при первом обращении.
         """
         if not getattr(self, "_id", None):
             self._id = str(uuid.uuid4())
         return self._id
-
-    @id.setter
-    def id(self, value: str) -> None:
-        """
-        Установка идентификатора объекта.
-        """
-        if not value or not isinstance(value, str) or not value.strip():
-            raise ValueError("Идентификатор должен быть непустой строкой")
-        self._id = value.strip()
 
     @property
     def name(self) -> str:
