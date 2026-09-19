@@ -1,0 +1,23 @@
+{
+  "company_name": "ООО Ромашка",
+  "database": {
+    "connection_string": "sqlite:///restaurant.db"
+  },
+  "work_hours": {
+    "restaurant_open": "10:00",
+    "restaurant_close": "22:00",
+    "workshop_mode": "24/7"
+  },
+  "restaurants": [
+    {
+      "id": "3788d98a-a3aa-4d88-b256-553d0060f1ee",
+      "name": "Ресторан 1",
+      "address": "ул. Ленина, д. 1"
+    },
+    {
+      "id": "f7551f80-8f1d-46d8-ab91-44986c11a752",
+      "name": "Ресторан 2",
+      "address": "ул. Юрия тена, д. 2"
+    }
+  ]
+}
