@@ -2,25 +2,51 @@ import pytest
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 
+
 class test_entity(abstract_entity):
+    """
+    Тестовый класс-наследник abstract_entity для проверки базового функционала.
+    """
     pass
 
-def test_abstract_entity_get_id_not_null():
+
+def test_not_empty_id_after_instantiation_success():
+    """
+    <summary>
+    У новой сущности должен быть сгенерирован непустой id
+    </summary>
+    """
     # Подготовка
     entity = test_entity()
+
     # Действие
     result = entity.id
+
     # Проверка
     assert result != ""
+    assert isinstance(result, str)
 
-def test_abstract_entity_unique_ids():
+
+def test_unique_ids_for_different_instances_success():
+    """
+    <summary>
+    У разных экземпляров сущности id должны различаться
+    </summary>
+    """
     # Подготовка
     entity1 = test_entity()
     entity2 = test_entity()
+
     # Проверка
     assert entity1.id != entity2.id
 
-def test_abstract_entity_same_id():
+
+def test_equality_with_same_id_success():
+    """
+    <summary>
+    Сущности с одинаковым id считаются равными
+    </summary>
+    """
     # Подготовка
     entity1 = test_entity()
     entity2 = test_entity()
@@ -30,18 +56,32 @@ def test_abstract_entity_same_id():
     # Проверка
     assert entity1 == entity2
 
-def test_abstract_entity_set_empty_name():
-    # Подготовка
-    entity = test_entity()
 
-    # Действие и проверка
-    with pytest.raises(ValueError):
-        entity.name = ""
-
-def test_abstract_entity_set_empty_name_v2():
+def test_raise_arguments_exception_when_set_empty_name():
+    """
+    <summary>
+    При попытке задать пустое имя выбрасывается arguments_exception
+    </summary>
+    """
     # Подготовка
     entity = test_entity()
 
     # Действие и проверка
     with pytest.raises(arguments_exception):
         entity.name = ""
+
+
+def test_raise_arguments_exception_when_set_empty_id():
+    """
+    <summary>
+    При попытке задать пустой id выбрасывается arguments_exception
+    </summary>
+    """
+    # Подготовка
+    entity = test_entity()
+
+    # Действие и проверка
+    with pytest.raises(arguments_exception):
+        entity.id = ""
+
+

@@ -26,7 +26,7 @@ class abstract_entity(ABC):
         Установка id сущности.
         """
         if not value or not isinstance(value, str) or not value.strip():
-            raise arguments_exception(value, "Идентификатор должен быть непустой строкой", "id")
+            raise arguments_exception("Идентификатор должен быть непустой строкой", "id")
         self._id = value.strip()
 
     @property
@@ -42,7 +42,7 @@ class abstract_entity(ABC):
         Установка наименования.
         """
         if not value or not isinstance(value, str) or not value.strip():
-            raise arguments_exception(value, "Имя должно быть непустой строкой", "name")
+            raise arguments_exception("Имя должно быть непустой строкой", "name")
         self._name = value.strip()
 
     def __eq__(self, other: object) -> bool:
