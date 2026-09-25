@@ -85,3 +85,15 @@ def test_raise_arguments_exception_when_set_empty_id():
         entity.id = ""
 
 
+def test_set_name_exceeding_length():
+    """
+    <summary>
+    При попытке задать имя длиннее 50 символов выбрасывается arguments_exception
+    </summary>
+    """
+    # Подготовка
+    entity = test_entity()
+
+    # Действие и проверка
+    with pytest.raises(arguments_exception):
+        entity.name = "a" * 51
