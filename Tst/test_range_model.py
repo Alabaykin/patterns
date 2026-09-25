@@ -1,6 +1,6 @@
 import pytest
 from Src.Models.range_model import range_model
-from Src.Core.exception import arguments_exception
+from Src.Core.exception import arguments_exception, operation_exception
 
 
 def test_create_base_range_success():
@@ -77,4 +77,37 @@ def test_raise_arguments_exception_when_base_range_is_invalid_type():
     """
     with pytest.raises(arguments_exception):
         range_model("кг", 1000, "не range_model")
+
+
+def test_convert_to_between_compatible_units_success():
+    """
+    Успешный пересчет между совместимыми единицами измерения (тонна в килограммы).
+    """
+    # Подготовка: грамм - база, кг (1000 г), тонна (1_000_000 г)
+    gramm = range_model("грамм", 1)
+    kg = range_model("кг", 1000, gramm)
+    ton = range_model("т", 1000000, gramm)
+
+    # Действие
+    result = ton.convert_to(kg, 2)
+
+    # Проверка
+    assert result == 2000.0
+
+
+def test_raise_operation_exception_when_convert_incompatible_units():
+    """
+    Попытка пересчета между несовместимыми единицами (разные базовые единицы) вызывает operation_exception.
+    """
+    # Подготовка
+    gramm = range_model("грамм", 1)
+    kg = range_model("кг", 1000, gramm)
+
+    ml = range_model("мл", 1)
+    liter = range_model("литр", 1000, ml)
+
+    # Действие и проверка
+    with pytest.raises(operation_exception):
+        kg.convert_to(liter, 5)
+
 

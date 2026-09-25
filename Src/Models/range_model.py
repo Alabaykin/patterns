@@ -1,6 +1,6 @@
 from __future__ import annotations
 from Src.Core.abstract_entity import abstract_entity
-from Src.Core.exception import arguments_exception
+from Src.Core.exception import arguments_exception, operation_exception
 
 
 class range_model(abstract_entity):
@@ -62,4 +62,22 @@ class range_model(abstract_entity):
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise arguments_exception("Значение для пересчета должно быть числом", "value")
         return value * self.coefficient
+
+    def convert_to(self, target: range_model, value: float) -> float:
+        """
+        Пересчет значения текущей единицы измерения в целевую совместимую единицу.
+
+        """
+        if not isinstance(target, range_model):
+            raise arguments_exception("Целевая единица должна быть объектом range_model", "target")
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            raise arguments_exception("Значение для пересчета должно быть числом", "value")
+
+        if self.base_range != target.base_range:
+            raise operation_exception(
+                f"Невозможно выполнить пересчет из '{self.name}' в '{target.name}': разные базовые единицы измерения"
+            )
+
+        base_val = self.to_base(value)
+        return base_val / target.coefficient
 
