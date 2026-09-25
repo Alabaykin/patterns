@@ -43,6 +43,8 @@ class abstract_entity(ABC):
         """
         if not value or not isinstance(value, str) or not value.strip():
             raise arguments_exception("Имя должно быть непустой строкой", "name")
+        elif len(value.strip()) > 50:
+            raise arguments_exception("Длина имени не может превышать 50 символов", "name")
         self._name = value.strip()
 
     def __eq__(self, other: object) -> bool:
