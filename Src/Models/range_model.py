@@ -15,11 +15,11 @@ class range_model(abstract_entity):
         Инициализация единицы измерения.
         :param name: Наименование единицы измерения (до 50 символов)
         :param coefficient: Коэффициент пересчета относительно базовой единицы (> 0)
-        :param base_range: Базовая единица измерения (если None, ссылается на саму себя)
+        :param base_range: Базовая единица измерения (если None, то текущая единица является базовой)
         """
         self.name = name
         self.coefficient = coefficient
-        self.base_range = base_range if base_range is not None else self
+        self.base_range = base_range
 
     @property
     def coefficient(self) -> float:
@@ -42,7 +42,7 @@ class range_model(abstract_entity):
     @property
     def base_range(self) -> range_model:
         """
-        Базовая единица измерения.
+        Базовая единица измерения (None для базовых единиц).
         """
         return self._base_range
 
@@ -53,7 +53,14 @@ class range_model(abstract_entity):
         """
         if value is not None and not isinstance(value, range_model):
             raise arguments_exception("Базовая единица измерения должна быть объектом range_model", "base_range")
-        self._base_range = value if value is not None else self
+        self._base_range = value
+
+    @property
+    def base(self) -> range_model:
+        """
+        Алиас для базовой единицы измерения.
+        """
+        return self._base_range
 
     def to_base(self, value: float) -> float:
         """
@@ -66,18 +73,22 @@ class range_model(abstract_entity):
     def convert_to(self, target: range_model, value: float) -> float:
         """
         Пересчет значения текущей единицы измерения в целевую совместимую единицу.
-
         """
         if not isinstance(target, range_model):
             raise arguments_exception("Целевая единица должна быть объектом range_model", "target")
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise arguments_exception("Значение для пересчета должно быть числом", "value")
 
-        if self.base_range != target.base_range:
+        # Определяем базовую единицу для каждого (если base_range None, базовой является сама единица)
+        self_root = self.base_range if self.base_range is not None else self
+        target_root = target.base_range if target.base_range is not None else target
+
+        if self_root != target_root:
             raise operation_exception(
                 f"Невозможно выполнить пересчет из '{self.name}' в '{target.name}': разные базовые единицы измерения"
             )
 
         base_val = self.to_base(value)
         return base_val / target.coefficient
+
 
