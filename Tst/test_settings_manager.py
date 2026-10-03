@@ -87,3 +87,58 @@ def test_same_strings_settings_manager_create():
         assert instance1 is instance2
     except:
         assert False
+
+
+"""
+Проверить корректность конвертации данных в поля модели settings_model
+"""
+def test_convert_fields_settings_manager_success():
+    # Подготовка
+    manager = settings_manager()
+
+    # Действие
+    manager.load()
+
+    # Проверка
+    settings = manager.settings
+    assert settings is not None
+    assert settings.boss_name == "Иванов Иван Иванович"
+    assert settings.account_name == "Петров Петр Петрович"
+    assert settings.organization is not None
+    assert settings.organization.name == "ООО Ромашка"
+    assert settings.organization.inn == "1234567890"
+    assert settings.organization.bik == "123456789"
+    assert settings.organization.account == "12345678901234567890"
+    assert settings.organization.ownership_type == "ООО"
+    assert isinstance(settings.is_first, bool)
+
+
+
+"""
+Проверить, что настройки двух разных инстансов settings_manager совпадают (Singleton)
+"""
+def test_equals_settings_across_instances():
+    # Подготовка
+    manager1 = settings_manager()
+    manager2 = settings_manager()
+
+    # Действие
+    manager1.load()
+
+    # Проверка
+    assert manager1.settings is manager2.settings
+
+
+
+"""
+Проверить выброс исключения operation_exception при загрузке несуществующего файла
+"""
+def test_raise_operation_exception_on_missing_file():
+    manager = settings_manager()
+    try:
+        manager.load("non_existent_file_path_12345.json")
+        assert False
+    except operation_exception:
+        assert True
+    except:
+        assert False
