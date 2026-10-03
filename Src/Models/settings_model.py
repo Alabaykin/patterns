@@ -57,3 +57,17 @@ class settings_model(abstract_entity):
     def account_name(self, value: str) -> None:
         validator.validate(value, str, 255)
         self.__account_name = value.strip()
+
+    """
+    Флаг первого старта
+    """
+    __is_first: bool = True
+
+    @property
+    def is_first(self) -> bool:
+        return self.__is_first
+
+    @is_first.setter
+    def is_first(self, value: bool) -> None:
+        validator.validate(value, bool)
+        self.__is_first = value
