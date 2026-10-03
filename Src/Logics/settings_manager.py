@@ -33,8 +33,38 @@ class settings_manager(abstract_manager):
             raise operation_exception(f"Ошибка при загрузке данных из файла {inner_file_name}: {str(ex)}")
 
     def convert(self) -> bool:
+        if not isinstance(self.__data, dict):
+            return False
+
         if self._settings is None:
             self._settings = settings_model()
+            
+        company_name = self.__data.get("company_name", "")
+        inn = str(self.__data.get("inn", ""))
+        bik = str(self.__data.get("bik", ""))
+        account = str(self.__data.get("account", ""))
+        ownership_type = self.__data.get("ownership_type", "")
+
+        from Src.Models.organization_model import organization_model
+        organization = organization_model(
+            name=company_name,
+            inn=inn,
+            bik=bik,
+            account=account,
+            ownership_type=ownership_type
+        )
+        self._settings.organization = organization
+        boss_name = self.__data.get("boss_name", "")
+        if boss_name:
+            self._settings.boss_name = boss_name
+
+        account_name = self.__data.get("account_name", "")
+        if account_name:
+            self._settings.account_name = account_name
+
+        if "is_first" in self.__data:
+            self._settings.is_first = bool(self.__data["is_first"])
+
         return True
 
     @property
