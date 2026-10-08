@@ -4,6 +4,8 @@ from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
 from Src.Models.warehouse_model import warehouse_model
 from Src.Models.nomenclature_model import nomenclature_model
+from Src.Models.recipe_model import recipe_model
+from Src.Models.recipe_row_model import recipe_row_model
 from Src.Logics.settings_manager import settings_manager
 
 
@@ -24,6 +26,7 @@ class storage_manager(abstract_manager):
             self._groups: dict[str, group_model] = {}
             self._warehouses: dict[str, warehouse_model] = {}
             self._nomenclatures: dict[str, nomenclature_model] = {}
+            self._recipes: dict[str, recipe_model] = {}
             self._is_loaded = False
             self._initialized = True
 
@@ -47,75 +50,102 @@ class storage_manager(abstract_manager):
         """Список уникальных позиций номенклатуры."""
         return list(self._nomenclatures.values())
 
+    @property
+    def recipes(self) -> list[recipe_model]:
+        """Список уникальных рецептов (технологических карт)."""
+        return list(self._recipes.values())
+
     def add_range(self, item: range_model) -> None:
-        """Добавить единицу измерения с обеспечением уникальности."""
+        """Добавить единицу измерения."""
         validator.validate(item, range_model)
         self._ranges[item.name.strip().lower()] = item
 
     def add_group(self, item: group_model) -> None:
-        """Добавить группу с обеспечением уникальности."""
+        """Добавить группу."""
         validator.validate(item, group_model)
         self._groups[item.name.strip().lower()] = item
 
     def add_warehouse(self, item: warehouse_model) -> None:
-        """Добавить склад с обеспечением уникальности."""
+        """Добавить склад."""
         validator.validate(item, warehouse_model)
         self._warehouses[item.name.strip().lower()] = item
 
     def add_nomenclature(self, item: nomenclature_model) -> None:
-        """Добавить номенклатуру с обеспечением уникальности."""
+        """Добавить номенклатуру."""
         validator.validate(item, nomenclature_model)
         self._nomenclatures[item.name.strip().lower()] = item
 
+    def add_recipe(self, item: recipe_model) -> None:
+        """Добавить рецепт."""
+        validator.validate(item, recipe_model)
+        self._recipes[item.name.strip().lower()] = item
+
     def __generate_default_data(self) -> None:
         """
-        Генерация первичных эталонных данных (первый старт).
-        Создаются базовые единицы измерения, группы, склады и номенклатура для рецептов.
+        Генерация первичных эталонных данных (первый старт) с использованием фабричных методов.
+        Создаются базовые единицы измерения, группы, склады, номенклатура и рецепты
+        (включая рецепты с полуфабрикатами и упаковкой).
         """
         self._ranges.clear()
         self._groups.clear()
         self._warehouses.clear()
         self._nomenclatures.clear()
+        self._recipes.clear()
 
         # 1. Единицы измерения
+        gramm = range_model.create_gramm()
         kg = range_model.create_kilogramm()
-        gramm = kg.base
-        ml = range_model("мл", 1.0)
-        liter = range_model("л", 1000.0, ml)
-        piece = range_model("шт", 1.0)
+        ml = range_model.create_milliliter()
+        liter = range_model.create_liter()
+        piece = range_model.create_piece()
 
         for r in (gramm, kg, ml, liter, piece):
             self.add_range(r)
 
         # 2. Группы номенклатуры
-        raw = group_model("Сырье")
-        semi = group_model("Полуфабрикаты")
-        dishes = group_model("Блюда")
-        package = group_model("Упаковка")
+        raw = group_model.create_raw()
+        semi = group_model.create_semi()
+        dishes = group_model.create_dishes()
+        package = group_model.create_package()
 
         for g in (raw, semi, dishes, package):
             self.add_group(g)
 
         # 3. Склады
-        main_wh = warehouse_model("Основной склад")
-        kitchen_wh = warehouse_model("Кухня")
-        delivery_wh = warehouse_model("Зона доставки")
+        main_wh = warehouse_model.create_main()
+        kitchen_wh = warehouse_model.create_kitchen()
+        delivery_wh = warehouse_model.create_delivery()
 
         for w in (main_wh, kitchen_wh, delivery_wh):
             self.add_warehouse(w)
 
-        # 4. Номенклатура (сырье, полуфабрикат, блюдо)
-        flour = nomenclature_model("Мука пшеничная", "Мука пшеничная высший сорт", raw, kg)
-        sugar = nomenclature_model("Сахар", "Сахар-песок белый", raw, kg)
-        butter = nomenclature_model("Сливочное масло", "Масло сливочное 82.5%", raw, kg)
-        egg = nomenclature_model("Яйцо куриное", "Яйцо куриное категории С0", raw, piece)
-        vanilla = nomenclature_model("Ванилин", "Ванилин кристаллический", raw, gramm)
+        # 4. Номенклатура (сырье, полуфабрикаты, блюда, упаковка)
+        flour = nomenclature_model.create_flour()
+        sugar = nomenclature_model.create_sugar()
+        butter = nomenclature_model.create_butter()
+        egg = nomenclature_model.create_egg()
+        vanilla = nomenclature_model.create_vanilla()
+        condensed_milk = nomenclature_model.create_condensed_milk()
 
-        shortcrust_dough = nomenclature_model("Песочное тесто", "Тесто песочное полуфабрикат", semi, kg)
-        waffle_cake = nomenclature_model("Вафельный торт", "Торт песочно-вафельный с кремом", dishes, piece)
+        shortcrust_dough = nomenclature_model.create_shortcrust_dough()
+        cream = nomenclature_model.create_cream()
+        waffle_cake = nomenclature_model.create_waffle_cake()
+        cake_box = nomenclature_model.create_cake_box()
 
-        for n in (flour, sugar, butter, egg, vanilla, shortcrust_dough, waffle_cake):
+        for n in (
+            flour, sugar, butter, egg, vanilla, condensed_milk,
+            shortcrust_dough, cream, waffle_cake, cake_box
+        ):
             self.add_nomenclature(n)
+
+        # 5. Рецепты
+        dough_recipe = recipe_model.create_dough_recipe()
+        cream_recipe = recipe_model.create_cream_recipe()
+        cake_recipe = recipe_model.create_waffle_cake_recipe()
+
+        for r in (dough_recipe, cream_recipe, cake_recipe):
+            self.add_recipe(r)
+
 
     def convert(self, settings=None) -> bool:
         """
@@ -147,7 +177,8 @@ class storage_manager(abstract_manager):
             "ranges": self.ranges,
             "groups": self.groups,
             "warehouses": self.warehouses,
-            "nomenclatures": self.nomenclatures
+            "nomenclatures": self.nomenclatures,
+            "recipes": self.recipes
         }
 
     def load(self, file_name: str = "") -> None:
@@ -159,5 +190,3 @@ class storage_manager(abstract_manager):
     @property
     def is_loaded(self) -> bool:
         return self._is_loaded
-
-
