@@ -42,8 +42,8 @@ def test_storage_manager_first_start_generate_data():
 
     # Проверка наличия ключевых элементов
     range_names = [r.name for r in sm.ranges]
-    assert "грамм" in range_names
-    assert "кг" in range_names
+    assert "Грамм" in range_names
+    assert "Килограмм" in range_names
     assert "шт" in range_names
 
     group_names = [g.name for g in sm.groups]

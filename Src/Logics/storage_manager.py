@@ -78,8 +78,8 @@ class storage_manager(abstract_manager):
         self._nomenclatures.clear()
 
         # 1. Единицы измерения
-        gramm = range_model("грамм", 1.0)
-        kg = range_model("кг", 1000.0, gramm)
+        kg = range_model.create_kilogramm()
+        gramm = kg.base
         ml = range_model("мл", 1.0)
         liter = range_model("л", 1000.0, ml)
         piece = range_model("шт", 1.0)

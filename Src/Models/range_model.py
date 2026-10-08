@@ -91,4 +91,13 @@ class range_model(abstract_entity):
         base_val = self.to_base(value)
         return base_val / target.coefficient
 
+    @staticmethod
+    def create_kilogramm():
+        """
+        Фабричный метод
+        """
+
+        gramm = range_model(name="Грамм")
+        result = range_model(name="Килограмм", coefficient=1000.0, base_range=gramm)
+        return result
 
