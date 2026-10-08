@@ -110,8 +110,51 @@ classDiagram
         +range() range_model
     }
 
+    class abstract_entity {
+        <<Abstract>>
+        -_id: str
+        -_name: str
+        +id() str
+        +name() str
+    }
+
+    class recipe_row_model {
+        -_nomenclature: nomenclature_model
+        -_range: range_model
+        -_gross: float
+        -_net: float
+        +nomenclature() nomenclature_model
+        +range() range_model
+        +gross() float
+        +net() float
+        +create(nomenclature, range, gross, net)$ recipe_row_model
+    }
+
+    class recipe_model {
+        -_rows: list~recipe_row_model~
+        -_steps: str
+        -_output_range: range_model
+        -_target_nomenclature: nomenclature_model
+        +rows() list~recipe_row_model~
+        +steps() str
+        +output_range() range_model
+        +target_nomenclature() nomenclature_model
+        +add_row(row: recipe_row_model) void
+        +remove_row(row_or_name) bool
+        +calculate_gross(target_range: range_model) float
+        +calculate_net(target_range: range_model) float
+        +create(name, rows, steps, output_range, target_nomenclature)$ recipe_model
+    }
+
     abstract_manager <|-- settings_manager : Наследование
     abstract_manager <|-- storage_manager : Наследование
+
+    abstract_entity <|-- group_model : Наследование
+    abstract_entity <|-- warehouse_model : Наследование
+    abstract_entity <|-- range_model : Наследование
+    abstract_entity <|-- nomenclature_model : Наследование
+    abstract_entity <|-- recipe_row_model : Наследование
+    abstract_entity <|-- recipe_model : Наследование
 
     settings_manager o-- settings_model : Управляет
     settings_model *-- organization_model : Содержит
@@ -120,10 +163,17 @@ classDiagram
     storage_manager o-- group_model : Хранит уникальные
     storage_manager o-- warehouse_model : Хранит уникальные
     storage_manager o-- nomenclature_model : Хранит уникальные
+    storage_manager o-- recipe_model : Хранит уникальные
 
     nomenclature_model --> group_model : Относится к
     nomenclature_model --> range_model : Единица измерения
     range_model o-- range_model : Базовая единица
+
+    recipe_model *-- recipe_row_model : Содержит строки
+    recipe_model --> range_model : Выходная единица
+    recipe_model --> nomenclature_model : Целевая номенклатура
+    recipe_row_model --> nomenclature_model : Ингредиент
+    recipe_row_model --> range_model : Единица измерения
 ```
 
 ---
@@ -143,6 +193,122 @@ sequenceDiagram
     SM->>StM: settings_manager().settings.is_first
     StM-->>SM: True (первый старт)
     SM->>SM: __generate_default_data()
-    Note over SM: В памяти (кэше) создаются эталонные:<br/>ranges, groups, warehouses, nomenclatures
+    Note over SM: В памяти (кэше) создаются через фабричные методы:<br/>ranges, groups, warehouses, nomenclatures, recipes
     SM-->>Client: is_loaded = True
 ```
+
+---
+
+## 3. UML диаграмма классов для моделей рецептов (DDD)
+
+```mermaid
+classDiagram
+    direction TB
+
+    class abstract_entity {
+        <<Abstract>>
+        -_id: str
+        -_name: str
+        +id() str
+        +name() str
+    }
+
+    class recipe_model {
+        -_name: str
+        -_rows: list~recipe_row_model~
+        -_steps: str
+        -_output_range: range_model
+        -_target_nomenclature: nomenclature_model
+        +name() str
+        +rows() list~recipe_row_model~
+        +steps() str
+        +output_range() range_model
+        +target_nomenclature() nomenclature_model
+        +add_row(row: recipe_row_model) void
+        +remove_row(row_or_name) bool
+        +calculate_gross(target_range: range_model) float
+        +calculate_net(target_range: range_model) float
+        +create_dough_recipe()$ recipe_model
+        +create_cream_recipe()$ recipe_model
+        +create_waffle_cake_recipe()$ recipe_model
+    }
+
+    class recipe_row_model {
+        -_nomenclature: nomenclature_model
+        -_range: range_model
+        -_gross: float
+        -_net: float
+        +nomenclature() nomenclature_model
+        +range() range_model
+        +gross() float
+        +net() float
+        +create_flour_row(gross, net)$ recipe_row_model
+        +create_sugar_row(gross, net)$ recipe_row_model
+        +create_butter_row(gross, net)$ recipe_row_model
+        +create_egg_row(gross, net)$ recipe_row_model
+        +create_vanilla_row(gross, net)$ recipe_row_model
+        +create_condensed_milk_row(gross, net)$ recipe_row_model
+        +create_dough_row(gross, net)$ recipe_row_model
+        +create_cream_row(gross, net)$ recipe_row_model
+        +create_box_row(gross, net)$ recipe_row_model
+    }
+
+    class nomenclature_model {
+        -_name: str
+        -_full_name: str
+        -_group: group_model
+        -_range: range_model
+        +create_flour()$ nomenclature_model
+        +create_sugar()$ nomenclature_model
+        +create_butter()$ nomenclature_model
+        +create_egg()$ nomenclature_model
+        +create_vanilla()$ nomenclature_model
+        +create_condensed_milk()$ nomenclature_model
+        +create_shortcrust_dough()$ nomenclature_model
+        +create_cream()$ nomenclature_model
+        +create_waffle_cake()$ nomenclature_model
+        +create_cake_box()$ nomenclature_model
+    }
+
+    class range_model {
+        -_name: str
+        -_coefficient: float
+        -_base_range: range_model
+        +create_gramm()$ range_model
+        +create_kilogramm()$ range_model
+        +create_piece()$ range_model
+        +create_milliliter()$ range_model
+        +create_liter()$ range_model
+        +convert_to(target, value) float
+    }
+
+    class group_model {
+        -_name: str
+        +create_raw()$ group_model
+        +create_semi()$ group_model
+        +create_dishes()$ group_model
+        +create_package()$ group_model
+    }
+
+    class warehouse_model {
+        -_name: str
+        +create_main()$ warehouse_model
+        +create_kitchen()$ warehouse_model
+        +create_delivery()$ warehouse_model
+    }
+
+    abstract_entity <|-- recipe_model : Наследование
+    abstract_entity <|-- recipe_row_model : Наследование
+    abstract_entity <|-- nomenclature_model : Наследование
+    abstract_entity <|-- range_model : Наследование
+    abstract_entity <|-- group_model : Наследование
+    abstract_entity <|-- warehouse_model : Наследование
+
+    recipe_model "1" *-- "*" recipe_row_model : Rows (Спецификация)
+    recipe_model o--> "0..1" nomenclature_model : Target Dish / Semi
+    recipe_model o--> "0..1" range_model : Output Range
+    recipe_row_model o--> "1" nomenclature_model : Ingredient / Semi / Package
+    recipe_row_model o--> "1" range_model : Unit Range
+```
+
+
