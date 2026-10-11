@@ -15,20 +15,41 @@ class recipe_row_model(abstract_entity):
     _range: range_model = None
     _gross: float = 0.0
     _net: float = 0.0
+    _sub_recipe = None
 
-    def __init__(self, nomenclature: nomenclature_model, range: range_model, gross: float, net: float):
+    def __init__(
+        self,
+        nomenclature: nomenclature_model,
+        range: range_model,
+        gross: float,
+        net: float,
+        sub_recipe = None
+    ):
         """
         Инициализация строки рецепта.
         :param nomenclature: Номенклатура ингредиента (сырье, полуфабрикат, упаковка)
         :param range: Единица измерения
         :param gross: Вес/количество брутто (> 0)
         :param net: Вес/количество нетто (> 0)
+        :param sub_recipe: Вложенная технологическая карта (для составных блюд / полуфабрикатов)
         """
         self.nomenclature = nomenclature
         self.range = range
         self.gross = gross
         self.net = net
+        self.sub_recipe = sub_recipe
         self.name = nomenclature.name
+
+    @property
+    def sub_recipe(self):
+        """Вложенный рецепт (полуфабрикат / блюдо)."""
+        return self._sub_recipe
+
+    @sub_recipe.setter
+    def sub_recipe(self, value) -> None:
+        if value is not None and not hasattr(value, "calculate_gross"):
+            raise arguments_exception("Вложенный рецепт должен быть объектом recipe_model", "sub_recipe")
+        self._sub_recipe = value
 
     @property
     def nomenclature(self) -> nomenclature_model:

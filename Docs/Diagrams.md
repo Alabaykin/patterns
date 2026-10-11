@@ -123,10 +123,12 @@ classDiagram
         -_range: range_model
         -_gross: float
         -_net: float
+        -_sub_recipe: recipe_model
         +nomenclature() nomenclature_model
         +range() range_model
         +gross() float
         +net() float
+        +sub_recipe() recipe_model
         +create(nomenclature, range, gross, net)$ recipe_row_model
     }
 
@@ -174,6 +176,7 @@ classDiagram
     recipe_model --> nomenclature_model : Целевая номенклатура
     recipe_row_model --> nomenclature_model : Ингредиент
     recipe_row_model --> range_model : Единица измерения
+    recipe_row_model o--> recipe_model : Вложенный рецепт (sub_recipe)
 ```
 
 ---
@@ -238,10 +241,12 @@ classDiagram
         -_range: range_model
         -_gross: float
         -_net: float
+        -_sub_recipe: recipe_model
         +nomenclature() nomenclature_model
         +range() range_model
         +gross() float
         +net() float
+        +sub_recipe() recipe_model
         +create_flour_row(gross, net)$ recipe_row_model
         +create_sugar_row(gross, net)$ recipe_row_model
         +create_butter_row(gross, net)$ recipe_row_model
@@ -309,6 +314,7 @@ classDiagram
     recipe_model o--> "0..1" range_model : Output Range
     recipe_row_model o--> "1" nomenclature_model : Ingredient / Semi / Package
     recipe_row_model o--> "1" range_model : Unit Range
+    recipe_row_model o--> "0..1" recipe_model : Sub-Recipe (Вложенный рецепт)
 ```
 
 

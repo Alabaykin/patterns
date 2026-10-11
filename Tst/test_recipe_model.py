@@ -219,3 +219,30 @@ def test_recipe_remove_row_recalculates_weight(sample_ingredients):
     assert len(recipe.rows) == 0
     assert recipe.calculate_gross() == 0.0
     assert recipe.calculate_net() == 0.0
+
+
+def test_recipe_recursive_calculation_dish_in_dish(sample_ingredients):
+    """
+    Проверка рекурсивного расчета Брутто и Нетто для вложенного рецепта (блюдо в блюде):
+    Блюдо 'Солянка' (100 г) включено в строку блюда 'Солянка для бизнес ланча'.
+    """
+    flour = sample_ingredients["flour"]
+    sugar = sample_ingredients["sugar"]
+    gramm = sample_ingredients["gramm"]
+
+    # 1. Базовый рецепт "Солянка"
+    solyanka = recipe_model("Солянка", output_range=gramm)
+    solyanka.add_row(recipe_row_model(flour, gramm, gross=70.0, net=60.0))
+    solyanka.add_row(recipe_row_model(sugar, gramm, gross=30.0, net=30.0))
+    assert solyanka.calculate_gross() == 100.0
+    assert solyanka.calculate_net() == 90.0
+
+    # 2. Рецепт "Солянка для бизнес ланча", включающий "Солянку" как sub_recipe
+    solyanka_nom = nomenclature_model("Солянка", "Солянка мясная", group_model.create_dishes(), gramm)
+    lunch = recipe_model("Солянка для бизнес ланча", output_range=gramm)
+    lunch_row = recipe_row_model(solyanka_nom, gramm, gross=50.0, net=50.0, sub_recipe=solyanka)
+    lunch.add_row(lunch_row)
+
+    # Вес рассчитывается рекурсивно из sub_recipe
+    assert lunch.calculate_gross() == 100.0
+    assert lunch.calculate_net() == 90.0

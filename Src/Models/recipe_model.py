@@ -125,12 +125,18 @@ class recipe_model(abstract_entity):
     def calculate_gross(self, target_range: range_model = None) -> float:
         """
         Вычисление общего веса/количества Брутто путем сложения веса каждого ингредиента.
+        Если ингредиент является вложенным блюдом / полуфабрикатом (sub_recipe),
+        расчет выполняется рекурсивно.
         """
         total = 0.0
         target = target_range or self._output_range
 
         for row in self._rows:
-            val = row.gross
+            if row.sub_recipe is not None:
+                val = row.sub_recipe.calculate_gross(row.range)
+            else:
+                val = row.gross
+
             if target is not None:
                 try:
                     val = row.range.convert_to(target, val)
@@ -144,12 +150,18 @@ class recipe_model(abstract_entity):
     def calculate_net(self, target_range: range_model = None) -> float:
         """
         Вычисление общего веса Нетто путем сложения веса каждого ингредиента.
+        Если ингредиент является вложенным блюдом / полуфабрикатом (sub_recipe),
+        расчет выполняется рекурсивно.
         """
         total = 0.0
         target = target_range or self._output_range
 
         for row in self._rows:
-            val = row.net
+            if row.sub_recipe is not None:
+                val = row.sub_recipe.calculate_net(row.range)
+            else:
+                val = row.net
+
             if target is not None:
                 try:
                     val = row.range.convert_to(target, val)
