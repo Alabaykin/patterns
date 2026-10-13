@@ -1,3 +1,4 @@
+from __future__ import annotations
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 from Src.Models.group_model import group_model
@@ -74,3 +75,103 @@ class nomenclature_model(abstract_entity):
         if not isinstance(value, range_model):
             raise arguments_exception("Единица измерения должна быть объектом range_model", "range")
         self._range = value
+
+    @staticmethod
+    def create_flour() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Мука пшеничная"""
+        return nomenclature_model(
+            name="Мука пшеничная",
+            full_name="Мука пшеничная высший сорт",
+            group=group_model.create_raw(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_sugar() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Сахар-песок"""
+        return nomenclature_model(
+            name="Сахар",
+            full_name="Сахар-песок белый",
+            group=group_model.create_raw(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_butter() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Сливочное масло"""
+        return nomenclature_model(
+            name="Сливочное масло",
+            full_name="Масло сливочное 82.5%",
+            group=group_model.create_raw(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_egg() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Яйцо куриное"""
+        return nomenclature_model(
+            name="Яйцо куриное",
+            full_name="Яйцо куриное категории С0",
+            group=group_model.create_raw(),
+            range=range_model.create_piece()
+        )
+
+    @staticmethod
+    def create_vanilla() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Ванилин"""
+        return nomenclature_model(
+            name="Ванилин",
+            full_name="Ванилин кристаллический",
+            group=group_model.create_raw(),
+            range=range_model.create_gramm()
+        )
+
+    @staticmethod
+    def create_condensed_milk() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Сгущенное молоко"""
+        return nomenclature_model(
+            name="Молоко сгущенное вареное",
+            full_name="Молоко сгущенное вареное цельное",
+            group=group_model.create_raw(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_shortcrust_dough() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Песочное тесто (полуфабрикат)"""
+        return nomenclature_model(
+            name="Песочное тесто",
+            full_name="Тесто песочное полуфабрикат",
+            group=group_model.create_semi(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_cream() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Крем со сгущенкой (полуфабрикат)"""
+        return nomenclature_model(
+            name="Крем со сгущенкой",
+            full_name="Крем масляный со сгущенным молоком полуфабрикат",
+            group=group_model.create_semi(),
+            range=range_model.create_kilogramm()
+        )
+
+    @staticmethod
+    def create_waffle_cake() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Вафельный торт (готовое блюдо)"""
+        return nomenclature_model(
+            name="Вафельный торт",
+            full_name="Торт песочно-вафельный с кремом",
+            group=group_model.create_dishes(),
+            range=range_model.create_piece()
+        )
+
+    @staticmethod
+    def create_cake_box() -> nomenclature_model:
+        """Фабричный метод номенклатуры: Коробка для торта (упаковка)"""
+        return nomenclature_model(
+            name="Коробка для торта",
+            full_name="Картонная коробка самосборная 25х25х15 см",
+            group=group_model.create_package(),
+            range=range_model.create_piece()
+        )

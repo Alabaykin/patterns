@@ -83,21 +83,47 @@ class range_model(abstract_entity):
         self_root = self.base_range if self.base_range is not None else self
         target_root = target.base_range if target.base_range is not None else target
 
-        if self_root != target_root:
+        if self_root != target_root and (self_root.name.strip().lower() != target_root.name.strip().lower() or self_root.coefficient != target_root.coefficient):
             raise operation_exception(
                 f"Невозможно выполнить пересчет из '{self.name}' в '{target.name}': разные базовые единицы измерения"
             )
+
 
         base_val = self.to_base(value)
         return base_val / target.coefficient
 
     @staticmethod
-    def create_kilogramm():
+    def create_gramm() -> range_model:
         """
-        Фабричный метод
+        Фабричный метод создания базовой единицы 'Грамм'.
         """
+        return range_model(name="гр", coefficient=1.0)
 
-        gramm = range_model(name="Грамм")
-        result = range_model(name="Килограмм", coefficient=1000.0, base_range=gramm)
-        return result
+    @staticmethod
+    def create_kilogramm() -> range_model:
+        """
+        Фабричный метод создания единицы 'Килограмм'.
+        """
+        return range_model(name="кг", coefficient=1000.0, base_range=range_model.create_gramm())
+
+    @staticmethod
+    def create_piece() -> range_model:
+        """
+        Фабричный метод создания единицы 'шт'.
+        """
+        return range_model(name="шт", coefficient=1.0)
+
+    @staticmethod
+    def create_milliliter() -> range_model:
+        """
+        Фабричный метод создания базовой единицы 'мл'.
+        """
+        return range_model(name="мл", coefficient=1.0)
+
+    @staticmethod
+    def create_liter() -> range_model:
+        """
+        Фабричный метод создания единицы 'л'.
+        """
+        return range_model(name="л", coefficient=1000.0, base_range=range_model.create_milliliter())
 
