@@ -71,3 +71,23 @@ class settings_model(abstract_entity):
     def is_first(self, value: bool) -> None:
         validator.validate(value, bool)
         self.__is_first = value
+
+    """
+    Формат отчета по умолчанию
+    """
+    __response_format: str = "TXT"
+
+    @property
+    def response_format(self) -> str:
+        return self.__response_format
+
+    @response_format.setter
+    def response_format(self, value: str) -> None:
+        validator.validate(value, str, 255)
+        from Src.Dtos.report_type_enum import report_type_enum
+        fmt = report_type_enum.from_string(value)
+        if fmt is None:
+            from Src.Core.exception import arguments_exception
+            raise arguments_exception(f"Некорректный формат ответа: {value}")
+        self.__response_format = fmt.name
+
