@@ -111,6 +111,7 @@ def test_convert_fields_settings_manager_success():
     assert settings.organization.account == "12345678901234567890"
     assert settings.organization.ownership_type == "ООО"
     assert isinstance(settings.is_first, bool)
+    assert settings.response_format == "MARKDOWN"
 
 
 

@@ -3,6 +3,8 @@ from Src.Models.group_model import group_model
 from Src.Models.warehouse_model import warehouse_model
 from Src.Models.organization_model import organization_model
 from Src.Models.nomenclature_model import nomenclature_model
+from Src.Models.recipe_row_model import recipe_row_model
+from Src.Models.recipe_model import recipe_model
 
 __all__ = [
     "range_model",
@@ -10,4 +12,6 @@ __all__ = [
     "warehouse_model",
     "organization_model",
     "nomenclature_model",
+    "recipe_row_model",
+    "recipe_model",
 ]

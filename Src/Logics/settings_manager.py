@@ -65,7 +65,11 @@ class settings_manager(abstract_manager):
         if "is_first" in self.__data:
             self._settings.is_first = bool(self.__data["is_first"])
 
+        if "response_format" in self.__data:
+            self._settings.response_format = str(self.__data["response_format"])
+
         return True
+
 
     @property
     def is_loaded(self) -> bool:
