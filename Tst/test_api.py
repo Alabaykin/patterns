@@ -107,3 +107,22 @@ def test_api_get_entity_report_not_found(client):
 
     # Проверка
     assert response.status_code == 404
+
+
+def test_api_get_entity_report_txt_nomenclature(client):
+    """
+    Проверка эндпоинта получения отчета по номенклатуре в формате TXT.
+    """
+    # Подготовка
+    sm = storage_manager()
+    nomenclature = sm.nomenclatures[0]
+
+    # Действие
+    response = client.get(f"/api/report/txt/nomenclature/{nomenclature.id}")
+
+    # Проверка
+    assert response.status_code == 200
+    assert response.mimetype == "text/plain"
+    content = response.get_data(as_text=True)
+    assert f"Краткое наименование: {nomenclature.name}" in content
+

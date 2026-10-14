@@ -52,10 +52,10 @@ def _create_response(result, format_enum: report_type_enum):
             binary_bytes = result.text.encode("utf-8")
 
         if format_enum == report_type_enum.CSV:
-            mimetype = "text/csv; charset=utf-8"
+            mimetype = "text/csv"
             filename = "report.csv"
         else:
-            mimetype = "text/markdown; charset=utf-8"
+            mimetype = "text/markdown"
             filename = "report.md"
 
         return Response(
