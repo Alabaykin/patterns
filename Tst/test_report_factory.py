@@ -1,10 +1,15 @@
 import pytest
 from Src.Logics.report_factory import report_factory
 from Src.Logics.text_report import text_report
+from Src.Logics.markdown_report import markdown_report
+from Src.Logics.csv_report import csv_report
+from Src.Logics.xml_report import xml_report
+from Src.Logics.html_report import html_report
 from Src.Core.abstract_report import abstract_report
 from Src.Dtos.report_type_enum import report_type_enum
 from Src.Dtos.report_result_dto import report_result_dto
 from Src.Models.recipe_model import recipe_model
+from Src.Models.settings_model import settings_model
 from Src.Core.exception import arguments_exception
 
 
@@ -17,11 +22,19 @@ def test_report_factory_create_valid_type():
 
     # Действие
     report = factory.create(report_type_enum.TXT)
+    md_report = factory.create(report_type_enum.MARKDOWN)
+    c_report = factory.create(report_type_enum.CSV)
+    x_report = factory.create(report_type_enum.XML)
+    h_report = factory.create(report_type_enum.HTML)
 
     # Проверка
     assert report is not None
     assert isinstance(report, text_report)
     assert isinstance(report, abstract_report)
+    assert isinstance(md_report, markdown_report)
+    assert isinstance(c_report, csv_report)
+    assert isinstance(x_report, xml_report)
+    assert isinstance(h_report, html_report)
 
 
 def test_report_factory_create_invalid_type_raises_exception():
@@ -30,9 +43,33 @@ def test_report_factory_create_invalid_type_raises_exception():
     """
     # Подготовка
     factory = report_factory()
-    # Проверка
+
+    # Действие и проверка
     with pytest.raises(arguments_exception):
         factory.create(999)
+
+
+def test_report_factory_create_default_from_settings():
+    """
+    Проверка создания отчета по умолчанию из инкапсулированных настроек.
+    """
+    # Подготовка
+    settings = settings_model()
+    settings.response_format = "XML"
+    factory = report_factory(settings)
+
+    # Действие
+    rep = factory.create_default()
+
+    # Проверка
+    assert isinstance(rep, xml_report)
+
+    # Действие
+    settings.response_format = "Markdown"
+    rep_md = factory.create_default()
+
+    # Проверка
+    assert isinstance(rep_md, markdown_report)
 
 
 def test_report_factory_integration_build_report():
