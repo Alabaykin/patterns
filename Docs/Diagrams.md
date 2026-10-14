@@ -63,12 +63,15 @@ classDiagram
         -__boss_name: str
         -__account_name: str
         -__is_first: bool
+        -__response_format: str
         +organization() organization_model
         +company() organization_model
         +boss_name() str
         +account_name() str
         +is_first() bool
+        +response_format() str
     }
+
 
     class organization_model {
         -_name: str
@@ -315,6 +318,93 @@ classDiagram
     recipe_row_model o--> "1" nomenclature_model : Ingredient / Semi / Package
     recipe_row_model o--> "1" range_model : Unit Range
     recipe_row_model o--> "0..1" recipe_model : Sub-Recipe (Вложенный рецепт)
+```
+
+---
+
+## 4. UML диаграмма классов для Фабрики отчётов (Factory Method)
+
+```mermaid
+classDiagram
+    direction TB
+
+    class abstract_report {
+        <<Abstract>>
+        +build(source)* report_result_dto
+    }
+
+    class abstract_report_factory {
+        <<Abstract>>
+        +create(report_type: report_type_enum)* abstract_report
+        +create_default()* abstract_report
+    }
+
+    class report_factory {
+        -__mapping: dict~report_type_enum, type[abstract_report]~
+        -__settings: settings_model
+        +settings() settings_model
+        +create(report_type: report_type_enum) abstract_report
+        +create_default() abstract_report
+    }
+
+    class text_report {
+        -__recipe: recipe_model
+        +build(source) report_result_dto
+    }
+
+    class markdown_report {
+        +build(source) report_result_dto
+    }
+
+    class csv_report {
+        +build(source) report_result_dto
+    }
+
+    class xml_report {
+        +build(source) report_result_dto
+    }
+
+    class html_report {
+        +build(source) report_result_dto
+    }
+
+    class report_type_enum {
+        <<Enumeration>>
+        TXT
+        MARKDOWN
+        CSV
+        XML
+        HTML
+        +from_string(value: str)$ report_type_enum
+    }
+
+    class report_result_dto {
+        -__text: str
+        -__binary: list
+        +text() str
+        +binary() list
+    }
+
+    class abstract_entity {
+        <<Abstract>>
+        -_id: str
+        -_name: str
+    }
+
+    abstract_report_factory <|-- report_factory : Реализация
+    abstract_report <|-- text_report : Реализация
+    abstract_report <|-- markdown_report : Реализация
+    abstract_report <|-- csv_report : Реализация
+    abstract_report <|-- xml_report : Реализация
+    abstract_report <|-- html_report : Реализация
+
+    abstract_entity <|-- report_result_dto : Наследование
+
+    report_factory ..> abstract_report : Создает
+    report_factory ..> report_type_enum : Использует
+    report_factory o--> settings_model : Инкапсулирует
+
+    abstract_report ..> report_result_dto : Возвращает
 ```
 
 
