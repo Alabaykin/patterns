@@ -63,13 +63,14 @@ classDiagram
         -__boss_name: str
         -__account_name: str
         -__is_first: bool
-        -__response_format: str
+        -__response_format: report_type_enum
         +organization() organization_model
         +company() organization_model
         +boss_name() str
         +account_name() str
         +is_first() bool
-        +response_format() str
+        +response_format() report_type_enum
+        +format() report_type_enum
     }
 
 
@@ -330,21 +331,27 @@ classDiagram
 
     class abstract_report {
         <<Abstract>>
+        +mimetype() str*
+        +is_attachment() bool
+        +file_extension() str
+        +create_response(result, filename_prefix) Response
         +build(source)* report_result_dto
     }
 
     class abstract_report_factory {
         <<Abstract>>
-        +create(report_type: report_type_enum)* abstract_report
-        +create_default()* abstract_report
+        +create(report_type: report_type_enum, entity_type: str)* abstract_report
+        +create_default(entity_type: str)* abstract_report
     }
 
     class report_factory {
-        -__mapping: dict~report_type_enum, type[abstract_report]~
+        -__specialized_mapping: dict
+        -__format_mapping: dict
         -__settings: settings_model
         +settings() settings_model
-        +create(report_type: report_type_enum) abstract_report
-        +create_default() abstract_report
+        +normalize_entity_type(entity_type: str)$ str
+        +create(report_type: report_type_enum, entity_type: str) abstract_report
+        +create_default(entity_type: str) abstract_report
     }
 
     class text_report {
@@ -375,7 +382,6 @@ classDiagram
         CSV
         XML
         HTML
-        +from_string(value: str)$ report_type_enum
     }
 
     class report_result_dto {

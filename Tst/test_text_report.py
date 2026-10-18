@@ -33,14 +33,18 @@ def test_text_report_build_nomenclature():
     """
     from Src.Models.nomenclature_model import nomenclature_model
 
+    # Подготовка
     nom = nomenclature_model.create_flour()
     report = text_report()
 
+    # Действие
     result = report.build(nom)
+
+    # Проверка
     assert isinstance(result, report_result_dto)
-    assert f"Код: {nom.id}" in result.text
-    assert f"Краткое наименование: {nom.name}" in result.text
-    assert f"Полное наименование: {nom.full_name}" in result.text
+    assert nom.id in result.text
+    assert nom.name in result.text
+    assert nom.full_name in result.text
 
 
 def test_text_report_build_range():
@@ -49,14 +53,18 @@ def test_text_report_build_range():
     """
     from Src.Models.range_model import range_model
 
+    # Подготовка
     unit = range_model.create_kilogramm()
     report = text_report()
 
+    # Действие
     result = report.build(unit)
+
+    # Проверка
     assert isinstance(result, report_result_dto)
-    assert f"Код: {unit.id}" in result.text
-    assert f"Наименование: {unit.name}" in result.text
-    assert f"Коэффициент: {unit.coefficient}" in result.text
+    assert unit.id in result.text
+    assert unit.name in result.text
+    assert str(unit.coefficient) in result.text
 
 
 

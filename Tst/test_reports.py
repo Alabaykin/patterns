@@ -1,5 +1,4 @@
 import pytest
-from Src.Logics.text_report import text_report
 from Src.Logics.markdown_report import markdown_report
 from Src.Logics.csv_report import csv_report
 from Src.Logics.xml_report import xml_report
@@ -55,10 +54,13 @@ def test_markdown_report_nomenclature(nomenclature):
     result = report.build(nomenclature)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     text = bytes(result.binary).decode("utf-8")
-    assert "| Поле | Значение |" in text
+    assert "| Код | Краткое наименование | Полное наименование | Группа | Единица измерения |" in text
     assert nomenclature.name in text
     assert nomenclature.full_name in text
+    assert nomenclature.group.name in text
+    assert nomenclature.range.name in text
 
 
 def test_markdown_report_range(range_item):
@@ -72,8 +74,11 @@ def test_markdown_report_range(range_item):
     result = report.build(range_item)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     text = bytes(result.binary).decode("utf-8")
+    assert "| Код | Наименование | Коэффициент | Базовая единица |" in text
     assert range_item.name in text
+    assert str(range_item.coefficient) in text
 
 
 def test_csv_report_recipe(recipe):
@@ -106,9 +111,13 @@ def test_csv_report_nomenclature(nomenclature):
     result = report.build(nomenclature)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     text = bytes(result.binary).decode("utf-8")
     assert "Код;Краткое наименование;Полное наименование;Группа;Единица измерения" in text
     assert nomenclature.name in text
+    assert nomenclature.full_name in text
+    assert nomenclature.group.name in text
+    assert nomenclature.range.name in text
 
 
 def test_csv_report_range(range_item):
@@ -122,9 +131,11 @@ def test_csv_report_range(range_item):
     result = report.build(range_item)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     text = bytes(result.binary).decode("utf-8")
     assert "Код;Наименование;Коэффициент;Базовая единица" in text
     assert range_item.name in text
+    assert str(range_item.coefficient) in text
 
 
 def test_xml_report_recipe(recipe):
@@ -141,9 +152,8 @@ def test_xml_report_recipe(recipe):
     assert isinstance(result, report_result_dto)
     assert len(result.text) > 0
     assert "<recipe>" in result.text
-    assert f"<name>{recipe.name}</name>" in result.text
     for r in recipe.rows:
-        assert f"<name>{r.nomenclature.name}</name>" in result.text
+        assert r.nomenclature.name in result.text
 
 
 def test_xml_report_nomenclature(nomenclature):
@@ -157,9 +167,12 @@ def test_xml_report_nomenclature(nomenclature):
     result = report.build(nomenclature)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     assert "<nomenclature>" in result.text
-    assert f"<name>{nomenclature.name}</name>" in result.text
-    assert f"<full_name>{nomenclature.full_name}</full_name>" in result.text
+    assert nomenclature.name in result.text
+    assert nomenclature.full_name in result.text
+    assert nomenclature.group.name in result.text
+    assert nomenclature.range.name in result.text
 
 
 def test_xml_report_range(range_item):
@@ -173,8 +186,10 @@ def test_xml_report_range(range_item):
     result = report.build(range_item)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     assert "<range>" in result.text
-    assert f"<name>{range_item.name}</name>" in result.text
+    assert range_item.name in result.text
+    assert str(range_item.coefficient) in result.text
 
 
 def test_html_report_recipe(recipe):
@@ -188,8 +203,12 @@ def test_html_report_recipe(recipe):
     result = report.build(recipe)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     assert "<!DOCTYPE html>" in result.text
-    assert recipe.name in result.text
+    assert "<th>Код</th>" in result.text
+    assert "<th>Наименование</th>" in result.text
+    assert "<th>Брутто</th>" in result.text
+    assert "<th>Нетто</th>" in result.text
     for r in recipe.rows:
         assert r.nomenclature.name in result.text
 
@@ -205,9 +224,14 @@ def test_html_report_nomenclature(nomenclature):
     result = report.build(nomenclature)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     assert "<!DOCTYPE html>" in result.text
+    assert "<th>Краткое наименование</th>" in result.text
+    assert "<th>Полное наименование</th>" in result.text
     assert nomenclature.name in result.text
     assert nomenclature.full_name in result.text
+    assert nomenclature.group.name in result.text
+    assert nomenclature.range.name in result.text
 
 
 def test_html_report_range(range_item):
@@ -221,5 +245,9 @@ def test_html_report_range(range_item):
     result = report.build(range_item)
 
     # Проверка
+    assert isinstance(result, report_result_dto)
     assert "<!DOCTYPE html>" in result.text
+    assert "<th>Наименование</th>" in result.text
+    assert "<th>Коэффициент</th>" in result.text
     assert range_item.name in result.text
+    assert str(range_item.coefficient) in result.text

@@ -2,6 +2,7 @@ from Src.Core.abstract_manager import abstract_manager
 from Src.Core.validator import validator, operation_exception
 import json
 from Src.Models.settings_model import settings_model
+from Src.Dtos.report_type_enum import report_type_enum
 
 class settings_manager(abstract_manager):
     __default_file_name:str = "settings.json"
@@ -65,8 +66,21 @@ class settings_manager(abstract_manager):
         if "is_first" in self.__data:
             self._settings.is_first = bool(self.__data["is_first"])
 
-        if "response_format" in self.__data:
-            self._settings.response_format = str(self.__data["response_format"])
+        fmt_key = None
+        for k in ("response_format", "format"):
+            if k in self.__data:
+                fmt_key = k
+                break
+
+        if fmt_key:
+            fmt_str = str(self.__data[fmt_key]).strip().upper()
+            if fmt_str == "MD":
+                fmt_str = "MARKDOWN"
+            try:
+                self._settings.response_format = report_type_enum[fmt_str]
+            except KeyError:
+                from Src.Core.exception import arguments_exception
+                raise arguments_exception(f"Некорректный формат ответа в settings.json: {self.__data[fmt_key]}")
 
         return True
 

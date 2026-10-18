@@ -55,7 +55,7 @@ def test_report_factory_create_default_from_settings():
     """
     # Подготовка
     settings = settings_model()
-    settings.response_format = "XML"
+    settings.response_format = report_type_enum.XML
     factory = report_factory(settings)
 
     # Действие
@@ -65,7 +65,7 @@ def test_report_factory_create_default_from_settings():
     assert isinstance(rep, xml_report)
 
     # Действие
-    settings.response_format = "Markdown"
+    settings.format = report_type_enum.MARKDOWN
     rep_md = factory.create_default()
 
     # Проверка
@@ -93,3 +93,24 @@ def test_report_factory_integration_build_report():
     assert "Код | Наименование | Брутто | Нетто" in result.text
     for row in recipe.rows:
         assert row.nomenclature.name in result.text
+
+
+def test_report_factory_create_specialized_reports():
+    """
+    Проверка создания специализированных генераторов отчетов по паре (формат, сущность).
+    """
+    # Подготовка
+    from Src.Logics.csv_report import recipe_csv_report
+    from Src.Logics.markdown_report import nomenclature_markdown_report
+    from Src.Logics.xml_report import range_xml_report
+    factory = report_factory()
+
+    # Действие
+    rep_csv = factory.create(report_type_enum.CSV, "recipe")
+    rep_md = factory.create(report_type_enum.MARKDOWN, "nomenclature")
+    rep_xml = factory.create(report_type_enum.XML, "range")
+
+    # Проверка
+    assert isinstance(rep_csv, recipe_csv_report)
+    assert isinstance(rep_md, nomenclature_markdown_report)
+    assert isinstance(rep_xml, range_xml_report)

@@ -1,6 +1,7 @@
 from Src.Core.validator import validator, operation_exception
 from Src.Logics.settings_manager import settings_manager
 from Src.Models.settings_model import settings_model
+from Src.Dtos.report_type_enum import report_type_enum
 
 """
 Набор модульных тестов для класса settings_manager
@@ -111,7 +112,8 @@ def test_convert_fields_settings_manager_success():
     assert settings.organization.account == "12345678901234567890"
     assert settings.organization.ownership_type == "ООО"
     assert isinstance(settings.is_first, bool)
-    assert settings.response_format == "MARKDOWN"
+    assert settings.response_format == report_type_enum.MARKDOWN
+    assert settings.format == report_type_enum.MARKDOWN
 
 
 

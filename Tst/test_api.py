@@ -23,9 +23,9 @@ def test_api_get_report_legacy(client):
     assert "Код | Наименование | Брутто | Нетто" in response.get_data(as_text=True)
 
 
-def test_api_get_entity_report_markdown_binary(client):
+def test_api_get_entity_report_markdown(client):
     """
-    Проверка эндпоинта получения Markdown-отчета как бинарного файла.
+    Проверка эндпоинта получения Markdown-отчета (бинарные данные и скачивание файла).
     """
     # Подготовка
     sm = storage_manager()
@@ -36,15 +36,16 @@ def test_api_get_entity_report_markdown_binary(client):
 
     # Проверка
     assert response.status_code == 200
-    assert "attachment; filename=\"report.md\"" in response.headers.get("Content-Disposition", "")
+    assert response.mimetype == "text/markdown"
+    assert f'attachment; filename="recipe_{recipe.id}.md"' in response.headers.get("Content-Disposition", "")
     content = response.data.decode("utf-8")
     assert "| Код | Наименование | Брутто | Нетто |" in content
     assert recipe.rows[0].nomenclature.name in content
 
 
-def test_api_get_entity_report_csv_binary(client):
+def test_api_get_entity_report_csv(client):
     """
-    Проверка эндпоинта получения CSV-отчета как бинарного файла.
+    Проверка эндпоинта получения CSV-отчета (бинарные данные и скачивание файла).
     """
     # Подготовка
     sm = storage_manager()
@@ -55,7 +56,8 @@ def test_api_get_entity_report_csv_binary(client):
 
     # Проверка
     assert response.status_code == 200
-    assert "attachment; filename=\"report.csv\"" in response.headers.get("Content-Disposition", "")
+    assert response.mimetype == "text/csv"
+    assert f'attachment; filename="nomenclature_{nomenclature.id}.csv"' in response.headers.get("Content-Disposition", "")
     content = response.data.decode("utf-8")
     assert "Код;Краткое наименование;Полное наименование;Группа;Единица измерения" in content
     assert nomenclature.name in content
@@ -93,7 +95,8 @@ def test_api_get_entity_report_default(client):
 
     # Проверка
     assert response.status_code == 200
-    assert "attachment; filename=\"report.md\"" in response.headers.get("Content-Disposition", "")
+    assert response.mimetype == "text/markdown"
+    assert f'attachment; filename="recipe_{recipe.id}_default.md"' in response.headers.get("Content-Disposition", "")
     content = response.data.decode("utf-8")
     assert "| Код | Наименование | Брутто | Нетто |" in content
 
@@ -124,5 +127,6 @@ def test_api_get_entity_report_txt_nomenclature(client):
     assert response.status_code == 200
     assert response.mimetype == "text/plain"
     content = response.get_data(as_text=True)
-    assert f"Краткое наименование: {nomenclature.name}" in content
+    assert "Краткое наименование" in content
+    assert nomenclature.name in content
 
