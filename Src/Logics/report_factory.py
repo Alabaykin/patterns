@@ -1,50 +1,50 @@
 from Src.Core.abstract_report_factory import abstract_report_factory
 from Src.Core.abstract_report import abstract_report
+from Src.Core.abstract_entity import abstract_entity
 from Src.Dtos.report_type_enum import report_type_enum
-from Src.Logics.text_report import (
-    text_report,
-    recipe_text_report,
-    nomenclature_text_report,
-    range_text_report,
-)
-from Src.Logics.markdown_report import (
-    markdown_report,
-    recipe_markdown_report,
-    nomenclature_markdown_report,
-    range_markdown_report,
-)
-from Src.Logics.csv_report import (
-    csv_report,
-    recipe_csv_report,
-    nomenclature_csv_report,
-    range_csv_report,
-)
-from Src.Logics.xml_report import (
-    xml_report,
-    recipe_xml_report,
-    nomenclature_xml_report,
-    range_xml_report,
-)
-from Src.Logics.html_report import (
-    html_report,
-    recipe_html_report,
-    nomenclature_html_report,
-    range_html_report,
-)
 from Src.Logics.settings_manager import settings_manager
 from Src.Models.settings_model import settings_model
 from Src.Core.exception import arguments_exception
+
+from Src.Logics.text_report import text_report
+from Src.Logics.markdown_report import markdown_report
+from Src.Logics.csv_report import csv_report
+from Src.Logics.xml_report import xml_report
+from Src.Logics.html_report import html_report
+
+from Src.Logics.Reports.Text.recipe_text_report import recipe_text_report
+from Src.Logics.Reports.Text.nomenclature_text_report import nomenclature_text_report
+from Src.Logics.Reports.Text.range_text_report import range_text_report
+
+from Src.Logics.Reports.Markdown.recipe_markdown_report import recipe_markdown_report
+from Src.Logics.Reports.Markdown.nomenclature_markdown_report import nomenclature_markdown_report
+from Src.Logics.Reports.Markdown.range_markdown_report import range_markdown_report
+
+from Src.Logics.Reports.Csv.recipe_csv_report import recipe_csv_report
+from Src.Logics.Reports.Csv.nomenclature_csv_report import nomenclature_csv_report
+from Src.Logics.Reports.Csv.range_csv_report import range_csv_report
+
+from Src.Logics.Reports.Xml.recipe_xml_report import recipe_xml_report
+from Src.Logics.Reports.Xml.nomenclature_xml_report import nomenclature_xml_report
+from Src.Logics.Reports.Xml.range_xml_report import range_xml_report
+
+from Src.Logics.Reports.Html.recipe_html_report import recipe_html_report
+from Src.Logics.Reports.Html.nomenclature_html_report import nomenclature_html_report
+from Src.Logics.Reports.Html.range_html_report import range_html_report
 
 
 class report_factory(abstract_report_factory):
     """
     Реализация фабрики для построения отчётов.
-    Поддерживает создание как базовых генераторов отчетов по формату,
+    Инкапсулирует создание как базовых генераторов отчетов по формату,
     так и специализированных генераторов по паре (формат, сущность).
     """
     __settings: settings_model = None
 
     def __init__(self, settings: settings_model = None):
+        """
+        Инициализация фабрики отчетов с инкапсуляцией настроек.
+        """
         self.__specialized_mapping: dict[tuple[report_type_enum, str], type[abstract_report]] = {
             (report_type_enum.TXT, "recipe"): recipe_text_report,
             (report_type_enum.TXT, "nomenclature"): nomenclature_text_report,
@@ -85,19 +85,31 @@ class report_factory(abstract_report_factory):
 
     @property
     def settings(self) -> settings_model:
+        """
+        Инкапсулированные настройки приложения.
+        """
         return self.__settings
 
     @settings.setter
     def settings(self, value: settings_model) -> None:
+        """
+        Установка инкапсулированных настроек приложения.
+        """
         self.__settings = value
 
     @staticmethod
-    def normalize_entity_type(entity_type: str) -> str:
+    def normalize_entity_type(entity_type) -> str:
         """
-        Нормализация наименования типа сущности
+        Нормализация наименования типа сущности.
+        Поддерживает строку, тип класса или экземпляр сущности.
         """
-        if not isinstance(entity_type, str):
+        if isinstance(entity_type, abstract_entity):
+            entity_type = type(entity_type).__name__
+        elif isinstance(entity_type, type):
+            entity_type = entity_type.__name__
+        elif not isinstance(entity_type, str):
             return ""
+
         norm = entity_type.strip().lower()
         aliases = {
             "recipe_model": "recipe",
@@ -112,7 +124,7 @@ class report_factory(abstract_report_factory):
         }
         return aliases.get(norm, norm)
 
-    def create(self, report_type: report_type_enum, entity_type: str = "") -> abstract_report:
+    def create(self, report_type: report_type_enum, entity_type = "") -> abstract_report:
         """
         Создать экземпляр отчета заданного формата и, опционально, сущности.
         """
@@ -124,6 +136,7 @@ class report_factory(abstract_report_factory):
             key = (report_type, norm_entity)
             if key in self.__specialized_mapping:
                 return self.__specialized_mapping[key]()
+            raise arguments_exception(f"Формирование отчёта {report_type.name} для сущности '{entity_type}' не поддерживается!")
 
         if report_type not in self.__format_mapping:
             raise arguments_exception(f"Указанный тип отчета {report_type} не реализован!")
@@ -131,7 +144,7 @@ class report_factory(abstract_report_factory):
         report_class = self.__format_mapping[report_type]
         return report_class()
 
-    def create_default(self, entity_type: str = "") -> abstract_report:
+    def create_default(self, entity_type = "") -> abstract_report:
         """
         Создает инстанс отчета на основе настроек response_format.
         """

@@ -355,24 +355,88 @@ classDiagram
     }
 
     class text_report {
-        -__recipe: recipe_model
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
         +build(source) report_result_dto
     }
 
     class markdown_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
         +build(source) report_result_dto
     }
 
     class csv_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
         +build(source) report_result_dto
     }
 
     class xml_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
         +build(source) report_result_dto
     }
 
     class html_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
         +build(source) report_result_dto
+    }
+
+    class recipe_csv_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_csv_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_csv_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_markdown_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_markdown_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_markdown_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_xml_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_xml_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_xml_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_html_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_html_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_html_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_text_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_text_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_text_report {
+        +build(source: range_model) report_result_dto
     }
 
     class report_type_enum {
@@ -403,6 +467,26 @@ classDiagram
     abstract_report <|-- csv_report : Реализация
     abstract_report <|-- xml_report : Реализация
     abstract_report <|-- html_report : Реализация
+
+    csv_report <|-- recipe_csv_report : Наследование
+    csv_report <|-- nomenclature_csv_report : Наследование
+    csv_report <|-- range_csv_report : Наследование
+
+    markdown_report <|-- recipe_markdown_report : Наследование
+    markdown_report <|-- nomenclature_markdown_report : Наследование
+    markdown_report <|-- range_markdown_report : Наследование
+
+    xml_report <|-- recipe_xml_report : Наследование
+    xml_report <|-- nomenclature_xml_report : Наследование
+    xml_report <|-- range_xml_report : Наследование
+
+    html_report <|-- recipe_html_report : Наследование
+    html_report <|-- nomenclature_html_report : Наследование
+    html_report <|-- range_html_report : Наследование
+
+    text_report <|-- recipe_text_report : Наследование
+    text_report <|-- nomenclature_text_report : Наследование
+    text_report <|-- range_text_report : Наследование
 
     abstract_entity <|-- report_result_dto : Наследование
 
