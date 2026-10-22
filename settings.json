@@ -6,5 +6,7 @@
   "ownership_type": "ООО",
   "boss_name": "Иванов Иван Иванович",
   "account_name": "Петров Петр Петрович",
-  "is_first": true
-}
+  "is_first": true,
+  "response_format": "Markdown"
+}
+

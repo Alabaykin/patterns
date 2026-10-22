@@ -63,12 +63,16 @@ classDiagram
         -__boss_name: str
         -__account_name: str
         -__is_first: bool
+        -__response_format: report_type_enum
         +organization() organization_model
         +company() organization_model
         +boss_name() str
         +account_name() str
         +is_first() bool
+        +response_format() report_type_enum
+        +format() report_type_enum
     }
+
 
     class organization_model {
         -_name: str
@@ -315,6 +319,182 @@ classDiagram
     recipe_row_model o--> "1" nomenclature_model : Ingredient / Semi / Package
     recipe_row_model o--> "1" range_model : Unit Range
     recipe_row_model o--> "0..1" recipe_model : Sub-Recipe (Вложенный рецепт)
+```
+
+---
+
+## 4. UML диаграмма классов для Фабрики отчётов (Factory Method)
+
+```mermaid
+classDiagram
+    direction TB
+
+    class abstract_report {
+        <<Abstract>>
+        +mimetype() str*
+        +is_attachment() bool
+        +file_extension() str
+        +create_response(result, filename_prefix) Response
+        +build(source)* report_result_dto
+    }
+
+    class abstract_report_factory {
+        <<Abstract>>
+        +create(report_type: report_type_enum, entity_type: str)* abstract_report
+        +create_default(entity_type: str)* abstract_report
+    }
+
+    class report_factory {
+        -__specialized_mapping: dict
+        -__format_mapping: dict
+        -__settings: settings_model
+        +settings() settings_model
+        +normalize_entity_type(entity_type: str)$ str
+        +create(report_type: report_type_enum, entity_type: str) abstract_report
+        +create_default(entity_type: str) abstract_report
+    }
+
+    class text_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
+        +build(source) report_result_dto
+    }
+
+    class markdown_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
+        +build(source) report_result_dto
+    }
+
+    class csv_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
+        +build(source) report_result_dto
+    }
+
+    class xml_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
+        +build(source) report_result_dto
+    }
+
+    class html_report {
+        +mimetype() str
+        +file_extension() str
+        +is_attachment() bool
+        +build(source) report_result_dto
+    }
+
+    class recipe_csv_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_csv_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_csv_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_markdown_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_markdown_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_markdown_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_xml_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_xml_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_xml_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_html_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_html_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_html_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class recipe_text_report {
+        +build(source: recipe_model) report_result_dto
+    }
+    class nomenclature_text_report {
+        +build(source: nomenclature_model) report_result_dto
+    }
+    class range_text_report {
+        +build(source: range_model) report_result_dto
+    }
+
+    class report_type_enum {
+        <<Enumeration>>
+        TXT
+        MARKDOWN
+        CSV
+        XML
+        HTML
+    }
+
+    class report_result_dto {
+        -__text: str
+        -__binary: list
+        +text() str
+        +binary() list
+    }
+
+    class abstract_entity {
+        <<Abstract>>
+        -_id: str
+        -_name: str
+    }
+
+    abstract_report_factory <|-- report_factory : Реализация
+    abstract_report <|-- text_report : Реализация
+    abstract_report <|-- markdown_report : Реализация
+    abstract_report <|-- csv_report : Реализация
+    abstract_report <|-- xml_report : Реализация
+    abstract_report <|-- html_report : Реализация
+
+    csv_report <|-- recipe_csv_report : Наследование
+    csv_report <|-- nomenclature_csv_report : Наследование
+    csv_report <|-- range_csv_report : Наследование
+
+    markdown_report <|-- recipe_markdown_report : Наследование
+    markdown_report <|-- nomenclature_markdown_report : Наследование
+    markdown_report <|-- range_markdown_report : Наследование
+
+    xml_report <|-- recipe_xml_report : Наследование
+    xml_report <|-- nomenclature_xml_report : Наследование
+    xml_report <|-- range_xml_report : Наследование
+
+    html_report <|-- recipe_html_report : Наследование
+    html_report <|-- nomenclature_html_report : Наследование
+    html_report <|-- range_html_report : Наследование
+
+    text_report <|-- recipe_text_report : Наследование
+    text_report <|-- nomenclature_text_report : Наследование
+    text_report <|-- range_text_report : Наследование
+
+    abstract_entity <|-- report_result_dto : Наследование
+
+    report_factory ..> abstract_report : Создает
+    report_factory ..> report_type_enum : Использует
+    report_factory o--> settings_model : Инкапсулирует
+
+    abstract_report ..> report_result_dto : Возвращает
 ```
 
 

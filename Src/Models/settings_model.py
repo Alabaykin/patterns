@@ -1,6 +1,7 @@
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
 from Src.Models.organization_model import organization_model
+from Src.Dtos.report_type_enum import report_type_enum
 
 
 class settings_model(abstract_entity):
@@ -71,3 +72,30 @@ class settings_model(abstract_entity):
     def is_first(self, value: bool) -> None:
         validator.validate(value, bool)
         self.__is_first = value
+
+    """
+    Формат отчета по умолчанию
+    """
+    __response_format: report_type_enum = report_type_enum.TXT
+
+    @property
+    def response_format(self) -> report_type_enum:
+        return self.__response_format
+
+    @response_format.setter
+    def response_format(self, value: report_type_enum) -> None:
+        validator.validate(value, report_type_enum)
+        self.__response_format = value
+
+    @property
+    def format(self) -> report_type_enum:
+        """
+        Алиас для формата отчета (перечисление report_type_enum).
+        """
+        return self.__response_format
+
+    @format.setter
+    def format(self, value: report_type_enum) -> None:
+        self.response_format = value
+
+

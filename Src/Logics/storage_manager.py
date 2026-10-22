@@ -190,3 +190,31 @@ class storage_manager(abstract_manager):
     @property
     def is_loaded(self) -> bool:
         return self._is_loaded
+
+    def get_by_type_and_id(self, entity_type: str, identifier: str):
+        """
+        Поиск сущности в хранилище по ее типу и идентификатору или наименованию.
+        """
+        if not isinstance(entity_type, str) or not isinstance(identifier, str):
+            return None
+
+        t = entity_type.strip().lower()
+        items = []
+        if t in ("номенклатура", "nomenclature", "nomenclature_model"):
+            items = self.nomenclatures
+        elif t in ("единица измерения", "единица_измерения", "единица", "range", "range_model", "unit"):
+            items = self.ranges
+        elif t in ("рецепт", "recipe", "recipe_model"):
+            items = self.recipes
+        elif t in ("группа", "group", "group_model"):
+            items = self.groups
+        elif t in ("склад", "warehouse", "warehouse_model"):
+            items = self.warehouses
+        else:
+            return None
+
+        clean_id = identifier.strip().lower()
+        for item in items:
+            if str(item.id).lower() == clean_id or str(item.name).lower() == clean_id:
+                return item
+        return None
