@@ -1,8 +1,7 @@
 import xml.etree.ElementTree as ET
 from Src.Logics.xml_report import xml_report
-from Src.Dtos.report_result_dto import report_result_dto
-from Src.Core.exception import arguments_exception
 from Src.Models.nomenclature_model import nomenclature_model
+from Src.Core.exception import arguments_exception
 
 
 class nomenclature_xml_report(xml_report):
@@ -10,10 +9,7 @@ class nomenclature_xml_report(xml_report):
     Формирование XML-отчета по номенклатуре.
     """
 
-    def build(self, source: nomenclature_model) -> report_result_dto:
-        """
-        Сформировать XML-отчёт для указанной номенклатуры.
-        """
+    def build_body(self, source: nomenclature_model) -> str:
         if not isinstance(source, nomenclature_model):
             raise arguments_exception("Источник данных должен быть объектом nomenclature_model")
 
@@ -24,7 +20,4 @@ class nomenclature_xml_report(xml_report):
         ET.SubElement(root, "group").text = source.group.name if source.group else ""
         ET.SubElement(root, "range").text = source.range.name if source.range else ""
 
-        xml_text = ET.tostring(root, encoding="unicode", xml_declaration=True)
-        result = report_result_dto()
-        result.text = xml_text
-        return result
+        return ET.tostring(root, encoding="unicode", xml_declaration=True)

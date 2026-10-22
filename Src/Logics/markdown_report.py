@@ -1,51 +1,72 @@
-import importlib
 from Src.Core.abstract_report import abstract_report
-from Src.Core.abstract_entity import abstract_entity
-from Src.Dtos.report_result_dto import report_result_dto
 
 
 class markdown_report(abstract_report):
     """
     Базовый класс формирования отчёта в формате Markdown.
-    Определяет метаданные формата и делегирует формирование конкретного отчета фабрике.
+    Определяет метаданные формата (MIME-тип, расширение, режим вложения).
     """
+
+    _handlers = {}
 
     @property
     def mimetype(self) -> str:
         """
         MIME-тип контента отчёта в формате Markdown.
         """
-        return "text/markdown; charset=utf-8"
+        return "text/markdown"
 
     @property
     def is_attachment(self) -> bool:
         """
-        Флаг отправки отчета в качестве скачиваемого вложения.
+        Флаг формирования отчета как вложения (скачиваемый файл).
         """
         return True
 
     @property
     def file_extension(self) -> str:
         """
-        Расширение файла для формата отчёта.
+        Расширение файла отчета.
         """
         return "md"
 
-    def build(self, source: abstract_entity) -> report_result_dto:
+    def _resolve_handler(self, source):
         """
-        Сформировать отчёт для переданной сущности через фабрику отчетов.
+        Поиск специализированного обработчика по типу доменной модели.
         """
-        from Src.Logics.report_factory import report_factory
-        from Src.Dtos.report_type_enum import report_type_enum
-        reporter = report_factory().create(report_type_enum.MARKDOWN, source)
-        return reporter.build(source)
+        if type(self) is not markdown_report:
+            return self
+        handler_cls = self._handlers.get(type(source))
+        if handler_cls:
+            return handler_cls()
+        return self
+
+
+def _init_handlers():
+    from Src.Models.recipe_model import recipe_model
+    from Src.Models.nomenclature_model import nomenclature_model
+    from Src.Models.range_model import range_model
+    from Src.Logics.Reports.Markdown.recipe_markdown_report import recipe_markdown_report
+    from Src.Logics.Reports.Markdown.nomenclature_markdown_report import nomenclature_markdown_report
+    from Src.Logics.Reports.Markdown.range_markdown_report import range_markdown_report
+
+    markdown_report._handlers = {
+        recipe_model: recipe_markdown_report,
+        nomenclature_model: nomenclature_markdown_report,
+        range_model: range_markdown_report,
+    }
+
+
+_init_handlers()
 
 
 def __getattr__(name: str):
     """
-    Ленивый импорт специализированных классов Markdown-отчётов для обратной совместимости.
+    Ленивый импорт специализированных отчетов для обратной совместимости.
     """
     if name in ("recipe_markdown_report", "nomenclature_markdown_report", "range_markdown_report"):
+        import importlib
         mod = importlib.import_module(f"Src.Logics.Reports.Markdown.{name}")
         return getattr(mod, name)
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+

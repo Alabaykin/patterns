@@ -1,7 +1,9 @@
 from Src.Core.abstract_manager import abstract_manager
 from Src.Core.validator import validator, operation_exception
+from Src.Core.exception import arguments_exception
 import json
 from Src.Models.settings_model import settings_model
+from Src.Models.organization_model import organization_model
 from Src.Dtos.report_type_enum import report_type_enum
 
 class settings_manager(abstract_manager):
@@ -46,7 +48,6 @@ class settings_manager(abstract_manager):
         account = str(self.__data.get("account", ""))
         ownership_type = self.__data.get("ownership_type", "")
 
-        from Src.Models.organization_model import organization_model
         organization = organization_model(
             name=company_name,
             inn=inn,
@@ -79,7 +80,6 @@ class settings_manager(abstract_manager):
             try:
                 self._settings.response_format = report_type_enum[fmt_str]
             except KeyError:
-                from Src.Core.exception import arguments_exception
                 raise arguments_exception(f"Некорректный формат ответа в settings.json: {self.__data[fmt_key]}")
 
         return True

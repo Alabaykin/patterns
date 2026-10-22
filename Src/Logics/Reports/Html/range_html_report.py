@@ -1,8 +1,6 @@
-import html
 from Src.Logics.html_report import html_report
-from Src.Dtos.report_result_dto import report_result_dto
-from Src.Core.exception import arguments_exception
 from Src.Models.range_model import range_model
+from Src.Core.exception import arguments_exception
 
 
 class range_html_report(html_report):
@@ -10,20 +8,20 @@ class range_html_report(html_report):
     Формирование HTML-отчета по единице измерения.
     """
 
-    def build(self, source: range_model) -> report_result_dto:
-        """
-        Сформировать HTML-отчёт для указанной единицы измерения.
-        """
+    def build_header(self, source: range_model) -> str:
         if not isinstance(source, range_model):
             raise arguments_exception("Источник данных должен быть объектом range_model")
+        return (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Единица измерения</title></head><body>"
+            "<table border='1'><tr><th>Код</th><th>Наименование</th><th>Коэффициент</th><th>Базовая единица</th></tr>"
+        )
 
-        thead = "<thead><tr><th>Код</th><th>Наименование</th><th>Коэффициент</th><th>Базовая единица</th></tr></thead>"
+    def build_body(self, source: range_model) -> str:
         base_name = source.base_range.name if source.base_range else "Базовая"
-        tr = f"<tr><td>{html.escape(str(source.id))}</td><td>{html.escape(source.name)}</td><td>{source.coefficient}</td><td>{html.escape(base_name)}</td></tr>"
-        tbody = f"<tbody>\n{tr}\n</tbody>"
-        body = f"<h2>Единица измерения: {html.escape(source.name)}</h2>\n<table border='1'>\n{thead}\n{tbody}\n</table>"
-        full_html = f"<!DOCTYPE html>\n<html>\n<head><meta charset='utf-8'><title>Отчет</title></head>\n<body>\n{body}\n</body>\n</html>"
+        return (
+            f"<tr><td>{source.id}</td><td>{source.name}</td><td>{source.coefficient}</td>"
+            f"<td>{base_name}</td></tr>"
+        )
 
-        result = report_result_dto()
-        result.text = full_html
-        return result
+    def build_footer(self, source: range_model) -> str:
+        return "</table></body></html>"

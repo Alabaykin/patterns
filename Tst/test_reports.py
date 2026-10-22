@@ -251,3 +251,61 @@ def test_html_report_range(range_item):
     assert "<th>Коэффициент</th>" in result.text
     assert range_item.name in result.text
     assert str(range_item.coefficient) in result.text
+
+
+def test_template_method_steps_recipe_markdown(recipe):
+    """
+    Проверка шагов Шаблонного метода (build_header, build_body, build_footer).
+    """
+    from Src.Logics.Reports.Markdown.recipe_markdown_report import recipe_markdown_report
+    rep = recipe_markdown_report()
+
+    header = rep.build_header(recipe)
+    body = rep.build_body(recipe)
+    footer = rep.build_footer(recipe)
+
+    assert "| Код | Наименование | Брутто | Нетто |" in header
+    assert "| :--- | :--- | :--- | :--- |" in header
+    for r in recipe.rows:
+        assert r.nomenclature.name in body
+    assert footer == ""
+
+    # Проверка выполнения через шаблонный метод build()
+    result = rep.build(recipe)
+    assert isinstance(result, report_result_dto)
+    assert len(result.binary) > 0
+
+
+def test_template_method_none_source_raises():
+    """
+    Проверка вызова шаблонного метода build с None источником.
+    """
+    from Src.Logics.markdown_report import markdown_report
+    from Src.Core.exception import arguments_exception
+
+    rep = markdown_report()
+    with pytest.raises(arguments_exception):
+        rep.build(None)
+
+
+def test_template_method_aliases_and_response(recipe):
+    """
+    Проверка псевдонимов и полиморфного формирования HTTP-ответа по стандарту RFC 5987.
+    """
+    from Src.Logics.Reports.Csv.recipe_csv_report import recipe_csv_report
+    rep = recipe_csv_report()
+
+    assert rep.is_binary is True
+    assert rep.is_attachment is True
+    assert rep.extension == "csv"
+    assert rep.file_extension == "csv"
+    assert rep.mime_type == "text/csv"
+    assert rep.mimetype == "text/csv"
+
+    result = rep.build(recipe)
+    response = rep.create_response(result, "рецепт_тест")
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type
+    assert "attachment" in response.headers.get("Content-Disposition", "")
+    assert "filename*=UTF-8''" in response.headers.get("Content-Disposition", "")
+
