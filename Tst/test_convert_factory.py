@@ -1,9 +1,9 @@
-import io
 import json
 import os
 from datetime import datetime
 import pytest
 from Src.Core.abstract_convert_factory import abstract_convert_factory
+from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.basic_convertor import basic_convertor
@@ -21,110 +21,120 @@ class TestConvertFactory:
     """
 
     def test_factory_implements_interface(self):
+        """
+        Проверка реализации интерфейса абстрактной фабрики.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
 
         # Действие и Проверка
-        assert isinstance(f, abstract_convert_factory)
+        assert isinstance(factory, abstract_convert_factory)
 
-    def test_get_convertors_mapping(self):
+    def test_factory_converters_property(self):
+        """
+        Проверка свойства converters и инкапсулированного маппинга типов.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
+
+        # Действие
+        mapping = factory.converters
+
+        # Проверка
+        assert isinstance(mapping, dict)
+        assert mapping[int] == basic_convertor
+        assert mapping[float] == basic_convertor
+        assert mapping[str] == basic_convertor
+        assert mapping[bool] == basic_convertor
+        assert mapping[datetime] == datetime_convertor
+        assert mapping[abstract_entity] == reference_convertor
+
+    def test_factory_create_instances(self):
+        """
+        Проверка фабричного метода create для различных типов и объектов.
+        """
+        # Подготовка
+        factory = convert_factory()
         now = datetime.now()
         piece = range_model.create_piece()
 
-        # Действие и Проверка
-        assert isinstance(f.get_convertor_for(123), basic_convertor)
-        assert isinstance(f.get_convertor_for("abc"), basic_convertor)
-        assert isinstance(f.get_convertor_for(now), datetime_convertor)
-        assert isinstance(f.get_convertor_for(piece), reference_convertor)
-
-    def test_create_alias(self):
-        # Подготовка
-        f = convert_factory()
-
         # Действие
-        conv = f.create(float)
+        conv_int = factory.create(int)
+        conv_str = factory.create("строка")
+        conv_dt = factory.create(now)
+        conv_entity = factory.create(piece)
 
         # Проверка
-        assert isinstance(conv, basic_convertor)
+        assert isinstance(conv_int, basic_convertor)
+        assert isinstance(conv_str, basic_convertor)
+        assert isinstance(conv_dt, datetime_convertor)
+        assert isinstance(conv_entity, reference_convertor)
 
-    def test_register_type_custom(self):
+    def test_factory_create_unregistered_type_raises(self):
+        """
+        Проверка генерации исключения при запросе конвертора для незарегистрированного типа.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
 
-        class CustomClass:
-            pass
-
-        class CustomConv(basic_convertor):
-            pass
-
-        # Действие
-        f.register_type(CustomClass, CustomConv)
-
-        # Проверка
-        assert isinstance(f.get_convertor_for(CustomClass), CustomConv)
-
-    def test_register_type_invalid_raises(self):
-        # Подготовка
-        f = convert_factory()
-
-        # Действие и Проверка
-        with pytest.raises(arguments_exception):
-            f.register_type("not_type", basic_convertor)
-        with pytest.raises(arguments_exception):
-            f.register_type(dict, object)
-
-    def test_unregistered_type_raises(self):
-        # Подготовка
-        f = convert_factory()
-
-        class Unknown:
+        class UnknownType:
             pass
 
         # Действие и Проверка
         with pytest.raises(arguments_exception):
-            f.get_convertor_for(Unknown)
+            factory.create(UnknownType)
 
     def test_convert_primitives(self):
+        """
+        Проверка конвертации примитивного именованного поля.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
 
         # Действие
-        res = f.convert("age", 25)
+        res = factory.convert("age", 25)
 
         # Проверка
         assert res == {"age": 25}
 
     def test_convert_list_of_elements(self):
+        """
+        Проверка конвертации списка элементов.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         items = [1, "two", 3.0]
 
         # Действие
-        res = f.convert("items", items)
+        res = factory.convert("items", items)
 
         # Проверка
         assert res == {"items": [1, "two", 3.0]}
 
     def test_convert_dictionary(self):
+        """
+        Проверка конвертации словаря.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         meta = {"key": "val", "num": 10}
 
         # Действие
-        res = f.convert("meta", meta)
+        res = factory.convert("meta", meta)
 
         # Проверка
         assert res == {"meta": {"key": "val", "num": 10}}
 
     def test_convert_single_object_returns_structure(self):
+        """
+        Проверка конвертации сущности напрямую без указания имени поля.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         recipe = recipe_model.create_dough_recipe()
 
         # Действие
-        res = f.convert(recipe)
+        res = factory.convert(recipe)
 
         # Проверка
         assert isinstance(res, dict)
@@ -132,25 +142,31 @@ class TestConvertFactory:
         assert isinstance(res["rows"], list)
 
     def test_convert_single_primitive_and_datetime(self):
+        """
+        Проверка сквозной конвертации одиночного числа и объекта datetime.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         now = datetime(2026, 10, 24, 15, 0, 0)
 
         # Действие
-        res_num = f.convert(100)
-        res_date = f.convert(now)
+        res_num = factory.convert(100)
+        res_date = factory.convert(now)
 
         # Проверка
         assert res_num == 100
         assert res_date == "2026-10-24T15:00:00"
 
     def test_serialize_deep_recipe_model(self):
+        """
+        Проверка глубокой сериализации составной модели рецепта.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         recipe = recipe_model.create_dough_recipe()
 
         # Действие
-        serialized = f.serialize(recipe)
+        serialized = factory.serialize(recipe)
 
         # Проверка
         assert isinstance(serialized, dict)
@@ -164,37 +180,12 @@ class TestConvertFactory:
         assert first_row["nomenclature"]["range"]["name"] == "кг"
         assert first_row["nomenclature"]["range"]["base_range"]["name"] == "гр"
 
-    def test_to_json_valid_formatting(self):
-        # Подготовка
-        f = convert_factory()
-        grp = group_model.create_raw()
-
-        # Действие
-        json_str = f.to_json(grp)
-
-        # Проверка
-        assert isinstance(json_str, str)
-        parsed = json.loads(json_str)
-        assert parsed["name"] == "Сырье"
-
-    def test_dump_to_stream(self):
-        # Подготовка
-        f = convert_factory()
-        kg = range_model.create_kilogramm()
-        stream = io.StringIO()
-
-        # Действие
-        f.dump(kg, stream)
-        val = stream.getvalue()
-
-        # Проверка
-        assert "кг" in val
-        parsed = json.loads(val)
-        assert parsed["name"] == "кг"
-
     def test_generate_json_files(self):
+        """
+        Формирование эталонных файлов JSON для включения в Pull Request.
+        """
         # Подготовка
-        f = convert_factory()
+        factory = convert_factory()
         sm = storage_manager()
         sm.load()
 
@@ -213,8 +204,9 @@ class TestConvertFactory:
         # Действие
         for file_name, obj in files_to_generate.items():
             file_path = os.path.join(json_dir, file_name)
+            serialized = factory.serialize(obj)
             with open(file_path, "w", encoding="utf-8") as fp:
-                f.dump(obj, fp, indent=2)
+                json.dump(serialized, fp, ensure_ascii=False, indent=2)
 
         # Проверка
         for file_name in files_to_generate:

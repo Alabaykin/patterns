@@ -9,6 +9,12 @@ class abstract_convert_factory(ABC):
     Задает стандартный интерфейс порождения конвертеров и сериализации структур данных.
     """
 
+    def __init__(self):
+        """
+        Инициализация базовой абстрактной фабрики.
+        """
+        super().__init__()
+
     @abstractmethod
     def create(self, target: Any) -> abstract_convertor:
         """
@@ -29,3 +35,4 @@ class abstract_convert_factory(ABC):
         Сериализация переданного объекта.
         """
         pass
+

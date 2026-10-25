@@ -10,6 +10,12 @@ class basic_convertor(abstract_convertor):
 
     ALLOWED_PRIMITIVE_TYPES = (int, float, str, bool)
 
+    def __init__(self):
+        """
+        Инициализация конвертора простых типов.
+        """
+        super().__init__()
+
     def serialize_value(self, value: Any, stack: set = None) -> Any:
         """
         Сериализация простого значения.
@@ -33,3 +39,4 @@ class basic_convertor(abstract_convertor):
         field = self._validate_field_name(field_name)
         payload = self.serialize_value(value)
         return {field: payload}
+

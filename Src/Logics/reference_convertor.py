@@ -11,6 +11,12 @@ class reference_convertor(abstract_convertor):
     Конвертор доменных сущностей.
     """
 
+    def __init__(self):
+        """
+        Инициализация конвертора ссылочных типов.
+        """
+        super().__init__()
+
     def serialize_value(self, value: Any, stack: set = None) -> dict:
         """
         Сериализация сущности в словарь полей.
@@ -38,14 +44,14 @@ class reference_convertor(abstract_convertor):
         payload = self.serialize_value(value, set())
         return {field: payload}
 
-    def _default_serialize_node(self, node: Any, stack: set) -> Any:
+    def _serialize_node(self, node: Any, stack: set) -> Any:
         """
-        Сериализация произвольного узла при работе без фабрики.
+        Сериализация узла данных структуры сущности.
         """
         if isinstance(node, (list, tuple, set)):
-            return [self._default_serialize_node(elem, stack) for elem in node]
+            return [self._serialize_node(elem, stack) for elem in node]
         if isinstance(node, dict):
-            return {str(k): self._default_serialize_node(v, stack) for k, v in node.items()}
+            return {str(k): self._serialize_node(v, stack) for k, v in node.items()}
         if isinstance(node, (datetime, date)):
             return node.isoformat()
         if isinstance(node, abstract_entity):
@@ -80,10 +86,7 @@ class reference_convertor(abstract_convertor):
                 if ismethod(attr_val):
                     continue
 
-                if self._factory is not None:
-                    collected[attr_name] = self._factory.serialize_node(attr_val, current_stack)
-                else:
-                    collected[attr_name] = self._default_serialize_node(attr_val, current_stack)
+                collected[attr_name] = self._serialize_node(attr_val, current_stack)
 
         sorted_dict = {}
         if "id" in collected:
@@ -94,3 +97,4 @@ class reference_convertor(abstract_convertor):
             sorted_dict[k] = collected[k]
 
         return sorted_dict
+

@@ -9,6 +9,12 @@ class datetime_convertor(abstract_convertor):
     Конвертор дат и времени в строковый формат ISO.
     """
 
+    def __init__(self):
+        """
+        Инициализация конвертора даты и времени.
+        """
+        super().__init__()
+
     def serialize_value(self, value: Any, stack: set = None) -> str:
         """
         Сериализация даты/времени в формат ISO.
@@ -31,3 +37,4 @@ class datetime_convertor(abstract_convertor):
         field = self._validate_field_name(field_name)
         payload = self.serialize_value(value)
         return {field: payload}
+

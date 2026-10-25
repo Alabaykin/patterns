@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+from Src.Core.exception import arguments_exception
 from Src.Core.validator import validator
 
 _MISSING = object()
@@ -10,16 +11,11 @@ class abstract_convertor(ABC):
     Базовый контракт конвертора данных.
     """
 
-    def __init__(self, factory=None):
-        self._factory = factory
-
-    @property
-    def factory(self):
-        return self._factory
-
-    @factory.setter
-    def factory(self, instance):
-        self._factory = instance
+    def __init__(self):
+        """
+        Инициализация базового конвертора данных.
+        """
+        super().__init__()
 
     @abstractmethod
     def convert(self, field_name: Any, value: Any = _MISSING) -> dict:
@@ -45,3 +41,4 @@ class abstract_convertor(ABC):
         if not cleaned:
             raise arguments_exception("Имя поля не может быть пустой строкой", "field_name")
         return cleaned
+
