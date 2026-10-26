@@ -1,3 +1,4 @@
+import json
 from Src.Core.abstract_manager import abstract_manager
 from Src.Core.validator import validator
 from Src.Models.range_model import range_model
@@ -7,6 +8,7 @@ from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.recipe_model import recipe_model
 from Src.Models.recipe_row_model import recipe_row_model
 from Src.Logics.settings_manager import settings_manager
+from Src.Logics.convert_factory import convert_factory
 
 
 class storage_manager(abstract_manager):
@@ -186,6 +188,23 @@ class storage_manager(abstract_manager):
         Загрузка/инициализация хранилища (вызов convert).
         """
         self._is_loaded = self.convert()
+
+    def save(self, file_name: str = "storage.json") -> str:
+        """
+        Выгрузка всех данных хранилища в один файл формата JSON.
+        :param file_name: Путь к целевому файлу.
+        :return: Имя сохраненного файла.
+        """
+        validator.validate(file_name, str)
+        cleaned_file_name = file_name.strip()
+        if not cleaned_file_name:
+            cleaned_file_name = "storage.json"
+
+        factory = convert_factory()
+        payload = factory.serialize(self.data)
+        with open(cleaned_file_name, "w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False, indent=2)
+        return cleaned_file_name
 
     @property
     def is_loaded(self) -> bool:

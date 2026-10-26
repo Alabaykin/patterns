@@ -1,9 +1,12 @@
+import json
+import os
 import pytest
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
 from Src.Models.warehouse_model import warehouse_model
 from Src.Models.nomenclature_model import nomenclature_model
+from Src.Models.settings_model import settings_model
 from Src.Core.exception import arguments_exception
 
 
@@ -144,8 +147,6 @@ def test_storage_manager_convert_with_custom_settings_is_first_false():
     """
     Проверка конвертации при is_first == False: первичные данные не создаются.
     """
-    from Src.Models.settings_model import settings_model
-
     custom_settings = settings_model()
     custom_settings.is_first = False
 
@@ -211,6 +212,34 @@ def test_storage_manager_recipe_ingredients_weight_calculations():
     # 0.25 + 0.10 + 0.15 + 2.0 (шт) + 0.002 (ванилин 2г = 0.002 кг) = 2.502
     assert gross == 2.502
     assert net == 2.502
+
+
+def test_storage_manager_save_all_data(tmp_path):
+    """
+    Проверка выгрузки всех данных хранилища в один файл JSON.
+    """
+    # Подготовка
+    sm = storage_manager()
+    sm.load()
+    out_file = str(tmp_path / "all_storage_data.json")
+
+    # Действие
+    saved_path = sm.save(out_file)
+
+    # Проверка
+    assert saved_path == out_file
+    assert os.path.exists(out_file)
+    assert os.path.getsize(out_file) > 0
+
+    with open(out_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert isinstance(data, dict)
+    for expected_key in ("ranges", "groups", "warehouses", "nomenclatures", "recipes"):
+        assert expected_key in data
+        assert isinstance(data[expected_key], list)
+        assert len(data[expected_key]) > 0
+
 
 
 
