@@ -55,13 +55,6 @@ class range_model(abstract_entity):
             raise arguments_exception("Базовая единица измерения должна быть объектом range_model", "base_range")
         self._base_range = value
 
-    @property
-    def base(self) -> range_model:
-        """
-        Алиас для базовой единицы измерения.
-        """
-        return self._base_range
-
     def to_base(self, value: float) -> float:
         """
         Пересчет количества текущей единицы в базовую единицу.

@@ -14,7 +14,6 @@ def test_create_base_range_success():
     assert gramm.name == "грамм"
     assert gramm.coefficient == 1.0
     assert gramm.base_range is None
-    assert gramm.base is None
 
 
 

@@ -1,6 +1,7 @@
 import json
-import os
+from pathlib import Path
 from datetime import datetime
+from types import SimpleNamespace
 import pytest
 from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Core.abstract_entity import abstract_entity
@@ -9,7 +10,7 @@ from Src.Logics.convert_factory import convert_factory
 from Src.Logics.basic_convertor import basic_convertor
 from Src.Logics.datetime_convertor import datetime_convertor
 from Src.Logics.reference_convertor import reference_convertor
-from Src.Logics.storage_manager import storage_manager
+from Scripts.generate_json_examples import generate_examples
 from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
 from Src.Models.recipe_model import recipe_model
@@ -78,6 +79,9 @@ class TestConvertFactory:
         factory = convert_factory()
 
         class UnknownType:
+            """
+            Вспомогательный тип без зарегистрированного конвертора.
+            """
             pass
 
         # Действие и Проверка
@@ -180,40 +184,197 @@ class TestConvertFactory:
         assert first_row["nomenclature"]["range"]["name"] == "кг"
         assert first_row["nomenclature"]["range"]["base_range"]["name"] == "гр"
 
-    def test_generate_json_files(self):
+
+
+    def test_json_examples_match_serialization(self, tmp_path):
         """
-        Формирование эталонных файлов JSON для включения в Pull Request.
+        Проверка соответствия приложенных JSON-примеров результату сериализации.
+        """
+        # Подготовка
+        examples_dir = Path(__file__).resolve().parents[1] / "Json"
+
+        # Действие
+        names = generate_examples(tmp_path)
+
+        # Проверка
+        for name in names:
+            actual = json.loads((tmp_path / name).read_text(encoding="utf-8"))
+            expected = json.loads((examples_dir / name).read_text(encoding="utf-8"))
+            assert actual == expected
+
+    def test_arbitrary_object_preserves_public_fields(self):
+        """
+        Проверка сохранения публичных полей обычного объекта при преобразовании.
+        """
+        # Подготовка
+        source = SimpleNamespace(title="Заказ", rows=[{"date": datetime(2026, 11, 5)}])
+        expected = {"title": "Заказ", "rows": [{"date": "2026-11-05T00:00:00"}]}
+        factory = convert_factory()
+
+        # Действие
+        result = factory.convert(source)
+        named_result = factory.convert("order", source)
+
+        # Проверка
+        assert result == expected
+        assert named_result == {"order": expected}
+
+    def test_slots_and_inherited_properties(self):
+        """
+        Проверка преобразования slots и унаследованных свойств объекта.
+        """
+        # Подготовка
+        class Parent:
+            """
+            Базовый класс с публичным свойством для проверки наследования.
+            """
+            __slots__ = ()
+
+            @property
+            def title(self):
+                """
+                Получение наименования тестового объекта.
+                """
+                return "Заказ"
+
+        class Order(Parent):
+            """
+            Тестовый объект с публичным, закрытым и неинициализированным slots.
+            """
+            __slots__ = ("quantity", "_secret", "uninitialized")
+
+        source = Order()
+        source.quantity = 3
+        source._secret = "hidden"
+
+        # Действие
+        result = convert_factory().convert(source)
+
+        # Проверка
+        assert result == {"quantity": 3, "title": "Заказ"}
+
+    @pytest.mark.parametrize("source", [complex(1, 2), b"bytes", object()])
+    def test_unsupported_values_raise_at_any_depth(self, source):
+        """
+        Проверка исключения для неподдерживаемых значений на разных уровнях вложенности.
         """
         # Подготовка
         factory = convert_factory()
-        sm = storage_manager()
-        sm.load()
+        values = (source, [source], {"nested": source})
 
-        json_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Json")
-        os.makedirs(json_dir, exist_ok=True)
+        # Действие и Проверка
+        for value in values:
+            with pytest.raises(arguments_exception):
+                factory.serialize(value)
+            with pytest.raises(arguments_exception):
+                factory.convert("field", value)
 
-        files_to_generate = {
-            "recipe.json": sm.recipes[0],
-            "nomenclature.json": sm.nomenclatures[0],
-            "range.json": sm.ranges[0],
-            "warehouse.json": sm.warehouses[0],
-            "group.json": sm.groups[0],
-            "storage.json": sm.data,
-        }
+    @pytest.mark.parametrize("kind", ["list", "dict", "object"])
+    def test_cycles_raise_clear_error(self, kind):
+        """
+        Проверка исключения при циклических ссылках коллекций и обычных объектов.
+        """
+        # Подготовка
+        if kind == "list":
+            source = []
+            source.append(source)
+        elif kind == "dict":
+            source = {}
+            source["self"] = source
+        else:
+            source = SimpleNamespace()
+            source.self = source
+
+        # Действие и Проверка
+        with pytest.raises(arguments_exception, match="Циклическая"):
+            convert_factory().serialize(source)
+
+    def test_shared_reference_is_serialized_in_each_branch(self):
+        """
+        Проверка полного преобразования общей ссылки в независимых ветвях структуры.
+        """
+        # Подготовка
+        item = range_model.create_piece()
 
         # Действие
-        for file_name, obj in files_to_generate.items():
-            file_path = os.path.join(json_dir, file_name)
-            serialized = factory.serialize(obj)
-            with open(file_path, "w", encoding="utf-8") as fp:
-                json.dump(serialized, fp, ensure_ascii=False, indent=2)
+        data = convert_factory().serialize([item, item])
 
         # Проверка
-        for file_name in files_to_generate:
-            file_path = os.path.join(json_dir, file_name)
-            assert os.path.exists(file_path)
-            assert os.path.getsize(file_path) > 0
+        assert data[0] == data[1]
+        assert "coefficient" in data[1]
 
-            with open(file_path, "r", encoding="utf-8") as fp:
-                loaded = json.load(fp)
-                assert isinstance(loaded, (dict, list))
+    def test_distinct_entities_with_same_id_keep_their_fields(self):
+        """
+        Проверка сохранения полей разных сущностей с одинаковым идентификатором.
+        """
+        # Подготовка
+        first = range_model.create_piece()
+        second = range_model.create_gramm()
+        second.id = first.id
+        first.base_range = second
+
+        # Действие
+        result = convert_factory().serialize(first)
+
+        # Проверка
+        assert result["base_range"]["coefficient"] == second.coefficient
+
+    def test_nested_values_use_registered_converters(self):
+        """
+        Проверка использования зарегистрированного конвертора для вложенных значений.
+        """
+        # Подготовка
+        class CustomInt(basic_convertor):
+            """
+            Тестовый конвертор целых чисел со смещением значения.
+            """
+            def serialize_value(self, value, stack=None):
+                """
+                Преобразование целого числа с добавлением тестового смещения.
+                """
+                return value + 10
+
+        factory = convert_factory()
+        factory.converters[int] = CustomInt
+        source = SimpleNamespace(items=[1, {"count": 2}])
+
+        # Действие
+        result = factory.serialize(source)
+
+        # Проверка
+        assert result == {
+            "items": [11, {"count": 12}]
+        }
+
+    def test_getter_error_is_not_silently_ignored(self):
+        """
+        Проверка передачи ошибки чтения свойства вызывающему коду.
+        """
+        # Подготовка
+        class Broken:
+            """
+            Тестовый объект со свойством, вызывающим исключение.
+            """
+            @property
+            def field(self):
+                """
+                Получение свойства с ошибкой для проверки передачи исключения.
+                """
+                raise RuntimeError("getter failed")
+
+        source = Broken()
+
+        # Действие и Проверка
+        with pytest.raises(RuntimeError, match="getter failed"):
+            convert_factory().serialize(source)
+
+    def test_dictionary_key_collision_raises(self):
+        """
+        Проверка исключения при совпадении ключей после преобразования в строки.
+        """
+        # Подготовка
+        source = {1: "one", "1": "another"}
+
+        # Действие и Проверка
+        with pytest.raises(arguments_exception):
+            convert_factory().serialize(source)

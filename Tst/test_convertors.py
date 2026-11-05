@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+from types import SimpleNamespace
 import pytest
 from Src.Core.abstract_convertor import abstract_convertor
 from Src.Core.exception import arguments_exception
@@ -16,11 +17,17 @@ class TestAbstractConvertorContract:
     """
 
     def test_cannot_instantiate_abstract(self):
+        """
+        Проверка запрета создания экземпляра абстрактного конвертора.
+        """
         # Подготовка / Действие / Проверка
         with pytest.raises(TypeError):
             abstract_convertor()
 
     def test_has_abstract_method_convert(self):
+        """
+        Проверка наличия абстрактного метода convert.
+        """
         # Подготовка
         target_class = abstract_convertor
 
@@ -37,6 +44,9 @@ class TestBasicConvertor:
     """
 
     def test_inheritance(self):
+        """
+        Проверка наследования от абстрактного конвертора.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -55,6 +65,9 @@ class TestBasicConvertor:
         ids=["int", "float", "str", "bool", "none"],
     )
     def test_valid_primitive_conversion(self, field, val, expected):
+        """
+        Проверка преобразования простых значений в словарь именованного поля.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -65,6 +78,9 @@ class TestBasicConvertor:
         assert res == expected
 
     def test_single_arg_conversion(self):
+        """
+        Проверка преобразования значения без указания имени поля.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -77,6 +93,9 @@ class TestBasicConvertor:
         assert res_str == {"value": "test"}
 
     def test_invalid_field_name_type_raises(self):
+        """
+        Проверка исключения при неверном типе имени поля.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -85,6 +104,9 @@ class TestBasicConvertor:
             conv.convert(123, "val")
 
     def test_empty_field_name_raises(self):
+        """
+        Проверка исключения при пустом имени поля.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -93,6 +115,9 @@ class TestBasicConvertor:
             conv.convert("   ", "val")
 
     def test_non_primitive_value_raises(self):
+        """
+        Проверка исключения при передаче составного значения конвертору простых типов.
+        """
         # Подготовка
         conv = basic_convertor()
 
@@ -107,6 +132,9 @@ class TestDatetimeConvertor:
     """
 
     def test_inheritance(self):
+        """
+        Проверка наследования от абстрактного конвертора.
+        """
         # Подготовка
         conv = datetime_convertor()
 
@@ -114,6 +142,9 @@ class TestDatetimeConvertor:
         assert isinstance(conv, abstract_convertor)
 
     def test_datetime_format(self):
+        """
+        Проверка преобразования даты и времени в формат ISO 8601.
+        """
         # Подготовка
         conv = datetime_convertor()
         dt = datetime(2026, 10, 22, 19, 30, 15)
@@ -125,6 +156,9 @@ class TestDatetimeConvertor:
         assert res == {"timestamp": "2026-10-22T19:30:15"}
 
     def test_date_format(self):
+        """
+        Проверка преобразования даты в формат ISO 8601.
+        """
         # Подготовка
         conv = datetime_convertor()
         d = date(2026, 10, 22)
@@ -136,6 +170,9 @@ class TestDatetimeConvertor:
         assert res == {"day": "2026-10-22"}
 
     def test_single_arg_conversion(self):
+        """
+        Проверка преобразования значения без указания имени поля.
+        """
         # Подготовка
         conv = datetime_convertor()
         dt = datetime(2026, 10, 24, 12, 0, 0)
@@ -147,6 +184,9 @@ class TestDatetimeConvertor:
         assert res == {"datetime": "2026-10-24T12:00:00"}
 
     def test_invalid_value_type_raises(self):
+        """
+        Проверка исключения при передаче значения неподдерживаемого типа.
+        """
         # Подготовка
         conv = datetime_convertor()
 
@@ -155,6 +195,9 @@ class TestDatetimeConvertor:
             conv.convert("date", "2026-10-22")
 
     def test_empty_field_raises(self):
+        """
+        Проверка исключения при пустом имени поля даты.
+        """
         # Подготовка
         conv = datetime_convertor()
 
@@ -169,13 +212,19 @@ class TestReferenceConvertor:
     """
 
     def test_inheritance(self):
+        """
+        Проверка наследования от абстрактного конвертора.
+        """
         # Подготовка
         conv = reference_convertor()
 
-        # Действие & Проверка
+        # Действие и Проверка
         assert isinstance(conv, abstract_convertor)
 
     def test_convert_single_model(self):
+        """
+        Проверка преобразования сущности в словарь именованного поля.
+        """
         # Подготовка
         conv = reference_convertor()
         grp = group_model.create_raw()
@@ -209,6 +258,9 @@ class TestReferenceConvertor:
         assert res["name"] == grp.name
 
     def test_convert_recursive_nested_model(self):
+        """
+        Проверка преобразования сущности с вложенной базовой единицей измерения.
+        """
         # Подготовка
         conv = reference_convertor()
         kg = range_model.create_kilogramm()
@@ -224,7 +276,31 @@ class TestReferenceConvertor:
         assert data["base_range"]["name"] == "гр"
         assert data["base_range"]["coefficient"] == 1.0
 
+    @pytest.mark.parametrize("create", [range_model.create_gramm, range_model.create_kilogramm])
+    def test_base_range_is_the_only_base_field(self, create):
+        """
+        Проверка сериализации базовой единицы без дублирующего поля base.
+        """
+        # Подготовка
+        item = create()
+
+        # Действие
+        data = reference_convertor().convert(item)
+
+        # Проверка
+        assert "base" not in data
+        assert "base_range" in data
+        if item.base_range is None:
+            assert data["base_range"] is None
+        else:
+            assert data["base_range"]["name"] == item.base_range.name
+            assert data["base_range"]["base_range"] is None
+            assert "base" not in data["base_range"]
+
     def test_circular_reference_does_not_crash(self):
+        """
+        Проверка преобразования циклической ссылки на сущность в идентификатор и имя.
+        """
         # Подготовка
         conv = reference_convertor()
         item = range_model.create_piece()
@@ -238,6 +314,9 @@ class TestReferenceConvertor:
         assert res["cyclic"]["base_range"]["name"] == item.name
 
     def test_non_entity_argument_raises(self):
+        """
+        Проверка исключения при передаче простого значения ссылочному конвертору.
+        """
         # Подготовка
         conv = reference_convertor()
 
@@ -246,3 +325,49 @@ class TestReferenceConvertor:
             conv.convert("bad", "не сущность")
         with pytest.raises(arguments_exception):
             conv.convert("не сущность")
+
+    def test_nested_datetime_and_primitives(self):
+        """
+        Проверка преобразования дат и простых значений во вложенных коллекциях объекта.
+        """
+        # Подготовка
+        source = SimpleNamespace(items=[1, True, None, {"date": datetime(2026, 11, 5)}])
+
+        # Действие
+        result = reference_convertor().convert(source)
+
+        # Проверка
+        assert result == {
+            "items": [1, True, None, {"date": "2026-11-05T00:00:00"}]
+        }
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_basic_boolean_single_argument(value):
+    """
+    Проверка преобразования логического значения без указания имени поля.
+    """
+    # Подготовка
+    converter = basic_convertor()
+
+    # Действие
+    result = converter.convert(value)
+
+    # Проверка
+    assert result == {"value": value}
+
+
+def test_datetime_preserves_timezone_and_microseconds():
+    """
+    Проверка сохранения часового пояса и микросекунд при преобразовании даты.
+    """
+    # Подготовка
+    value = datetime(2026, 11, 5, 12, 30, 15, 123456, timezone(timedelta(hours=8)))
+
+    # Действие
+    result = datetime_convertor().convert("at", value)
+
+    # Проверка
+    assert result == {
+        "at": "2026-11-05T12:30:15.123456+08:00"
+    }

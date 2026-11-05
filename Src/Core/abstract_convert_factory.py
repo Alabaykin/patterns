@@ -36,3 +36,10 @@ class abstract_convert_factory(ABC):
         """
         pass
 
+    @abstractmethod
+    def serialize_node(self, source: Any, stack: set) -> Any:
+        """
+        Сериализация вложенного узла с сохранением текущего пути обхода.
+        """
+        pass
+

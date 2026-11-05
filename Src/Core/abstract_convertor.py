@@ -30,7 +30,7 @@ class abstract_convertor(ABC):
         """
         Сериализация значения узла (для рекурсивного обхода).
         """
-        pass
+        raise NotImplementedError
 
     def _validate_field_name(self, field_name: str) -> str:
         """

@@ -33,7 +33,7 @@ class basic_convertor(abstract_convertor):
         """
         if value is _MISSING:
             val = self.serialize_value(field_name)
-            key = "numeric" if isinstance(field_name, (int, float)) else "value"
+            key = "numeric" if isinstance(field_name, (int, float)) and not isinstance(field_name, bool) else "value"
             return {key: val}
 
         field = self._validate_field_name(field_name)

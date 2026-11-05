@@ -11,7 +11,7 @@ from Src.Core.exception import arguments_exception
 def sample_ingredients():
     raw_group = group_model.create_raw()
     kg = range_model.create_kilogramm()
-    gramm = kg.base
+    gramm = kg.base_range
     piece = range_model.create_piece()
 
     flour = nomenclature_model.create_flour()

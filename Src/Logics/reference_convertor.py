@@ -1,100 +1,96 @@
-from datetime import date, datetime
-from inspect import ismethod
+from inspect import getattr_static
 from typing import Any
+from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Core.abstract_convertor import abstract_convertor, _MISSING
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
+from Src.Core.validator import validator
 
 
 class reference_convertor(abstract_convertor):
     """
-    Конвертор доменных сущностей.
+    Конвертор публичных полей и свойств ссылочных объектов.
     """
 
-    def __init__(self):
+    def __init__(self, factory: abstract_convert_factory = None):
         """
-        Инициализация конвертора ссылочных типов.
+        Инициализация конвертора ссылочных типов с фабрикой конверторов.
         """
         super().__init__()
+        if factory is None:
+            # Локальный импорт исключает циклическую зависимость модулей.
+            from Src.Logics.convert_factory import convert_factory
+            factory = convert_factory()
+        validator.validate(factory, abstract_convert_factory)
+        self.__factory = factory
+
+    @property
+    def factory(self) -> abstract_convert_factory:
+        """
+        Получение фабрики для преобразования вложенных значений объекта.
+        """
+        return self.__factory
+
+    @staticmethod
+    def supports(target_type: type) -> bool:
+        """
+        Проверка возможности извлечения полей и свойств переданного типа.
+        """
+        return bool(
+            getattr(target_type, "__dictoffset__", 0)
+            or any("__slots__" in cls.__dict__ for cls in target_type.__mro__)
+            or any(isinstance(attr, property)
+                   for cls in target_type.__mro__ for attr in cls.__dict__.values())
+        )
 
     def serialize_value(self, value: Any, stack: set = None) -> dict:
         """
-        Сериализация сущности в словарь полей.
+        Сериализация ссылочного объекта в словарь публичных полей и свойств.
         """
-        if not isinstance(value, abstract_entity):
+        if isinstance(value, type) or callable(value) or not self.supports(type(value)):
             raise arguments_exception(
-                f"Ожидается сущность abstract_entity, получен {type(value).__name__}",
-                "value"
+                f"Неподдерживаемый ссылочный тип {type(value).__name__}", "value"
             )
-        return self.extract_entity_fields(value, stack or set())
+        return self.extract_entity_fields(value, set() if stack is None else stack)
 
     def convert(self, field_name: Any, value: Any = _MISSING) -> dict:
         """
-        Формирование словаря по типу Reference.
+        Формирование словаря по ссылочному объекту с необязательным именем поля.
         """
         if value is _MISSING:
-            if not isinstance(field_name, abstract_entity):
-                raise arguments_exception(
-                    f"Ожидается сущность abstract_entity, получен {type(field_name).__name__}",
-                    "value"
-                )
-            return self.extract_entity_fields(field_name, set())
-
+            return self.serialize_value(field_name)
         field = self._validate_field_name(field_name)
-        payload = self.serialize_value(value, set())
-        return {field: payload}
+        return {field: self.serialize_value(value)}
 
-    def _serialize_node(self, node: Any, stack: set) -> Any:
+    def extract_entity_fields(self, entity: Any, call_stack: set) -> dict:
         """
-        Сериализация узла данных структуры сущности.
+        Извлечение и сериализация полей объекта с контролем циклических ссылок.
         """
-        if isinstance(node, (list, tuple, set)):
-            return [self._serialize_node(elem, stack) for elem in node]
-        if isinstance(node, dict):
-            return {str(k): self._serialize_node(v, stack) for k, v in node.items()}
-        if isinstance(node, (datetime, date)):
-            return node.isoformat()
-        if isinstance(node, abstract_entity):
-            return self.extract_entity_fields(node, stack)
-        return node
+        token = id(entity)
+        if token in call_stack:
+            if isinstance(entity, abstract_entity):
+                return {"id": entity.id, "name": entity.name}
+            raise arguments_exception("Циклическая ссылка на объект", "value")
 
-    def extract_entity_fields(self, entity: abstract_entity, call_stack: set) -> dict:
-        """
-        Извлечение и сериализация свойств сущности.
-        """
-        entity_token = f"{entity.__class__.__name__}_{entity.id}"
-        if entity_token in call_stack:
-            return {"id": entity.id, "name": entity.name}
+        current_stack = call_stack | {token}
+        names = set(getattr(entity, "__dict__", {}))
+        for cls in type(entity).__mro__:
+            names.update(name for name, attr in cls.__dict__.items()
+                         if isinstance(attr, property))
+            slots = cls.__dict__.get("__slots__", ())
+            names.update((slots,) if isinstance(slots, str) else slots)
 
-        current_stack = set(call_stack)
-        current_stack.add(entity_token)
-
-        collected: dict[str, Any] = {}
-        cls = entity.__class__
-
-        for attr_name in dir(cls):
-            if attr_name.startswith("_"):
+        collected = {}
+        for name in sorted(names, key=lambda name: (name not in ("id", "name"), name)):
+            if name.startswith("_"):
                 continue
-
-            attr_obj = getattr(cls, attr_name, None)
-            if isinstance(attr_obj, property):
+            # Неинициализированные slots отсутствуют в исходной структуре.
+            if not isinstance(getattr_static(type(entity), name, None), property):
                 try:
-                    attr_val = getattr(entity, attr_name)
-                except Exception:
+                    value = getattr(entity, name)
+                except AttributeError:
                     continue
-
-                if ismethod(attr_val):
-                    continue
-
-                collected[attr_name] = self._serialize_node(attr_val, current_stack)
-
-        sorted_dict = {}
-        if "id" in collected:
-            sorted_dict["id"] = collected.pop("id")
-        if "name" in collected:
-            sorted_dict["name"] = collected.pop("name")
-        for k in sorted(collected.keys()):
-            sorted_dict[k] = collected[k]
-
-        return sorted_dict
-
+            else:
+                value = getattr(entity, name)
+            collected[name] = self.factory.serialize_node(value, current_stack)
+        return collected
