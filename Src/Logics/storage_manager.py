@@ -1,5 +1,6 @@
 import json
 from Src.Core.abstract_manager import abstract_manager
+from Src.Core.exception import arguments_exception, operation_exception
 from Src.Core.validator import validator
 from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
@@ -9,6 +10,7 @@ from Src.Models.recipe_model import recipe_model
 from Src.Models.recipe_row_model import recipe_row_model
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.convert_factory import convert_factory
+from Src.Logics.deserialize_factory import deserialize_factory
 
 
 class storage_manager(abstract_manager):
@@ -185,9 +187,79 @@ class storage_manager(abstract_manager):
 
     def load(self, file_name: str = "") -> None:
         """
-        Загрузка/инициализация хранилища (вызов convert).
+        Загрузка моделей из JSON-файла или инициализация хранилища при пустом имени файла.
+        Данные заменяются только после успешного восстановления всех коллекций.
         """
-        self._is_loaded = self.convert()
+        if not isinstance(file_name, str):
+            raise arguments_exception("Имя файла должно быть строкой", "file_name")
+        cleaned_file_name = file_name.strip()
+        if not cleaned_file_name:
+            self._is_loaded = self.convert()
+            return
+
+        try:
+            with open(cleaned_file_name, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise operation_exception(
+                f"Не удалось загрузить JSON из файла '{cleaned_file_name}': {error}"
+            ) from error
+
+        collections = self._deserialize_collections(data)
+        self._ranges = collections["ranges"]
+        self._groups = collections["groups"]
+        self._warehouses = collections["warehouses"]
+        self._nomenclatures = collections["nomenclatures"]
+        self._recipes = collections["recipes"]
+        self._is_loaded = True
+
+    def _deserialize_collections(self, data: dict) -> dict:
+        """
+        Восстановление коллекций в порядке файла с проверкой типа и уникальности моделей.
+        """
+        model_types = {
+            "ranges": range_model,
+            "groups": group_model,
+            "warehouses": warehouse_model,
+            "nomenclatures": nomenclature_model,
+            "recipes": recipe_model,
+        }
+        if not isinstance(data, dict):
+            raise arguments_exception("Корень JSON хранилища должен быть словарем", "data")
+        missing = model_types.keys() - data.keys()
+        if missing:
+            field = sorted(missing)[0]
+            raise arguments_exception(f"Отсутствует коллекция '{field}'", field)
+        unexpected = data.keys() - model_types.keys()
+        if unexpected:
+            field = str(next(iter(unexpected)))
+            raise arguments_exception(f"Неизвестная коллекция '{field}'", field)
+
+        factory = deserialize_factory()
+        collections = {}
+        for field, records in data.items():
+            if not isinstance(records, list):
+                raise arguments_exception(f"Коллекция '{field}' должна быть списком", field)
+            model_type = model_types[field]
+            items = {}
+            identifiers = set()
+            for item_data in records:
+                if not isinstance(item_data, dict):
+                    raise arguments_exception("Данные модели должны быть словарём", "data")
+                if "type" not in item_data:
+                    raise arguments_exception(f"У модели в коллекции '{field}' отсутствует метка типа", "type")
+                item = factory.deserialize(item_data)
+                if not isinstance(item, model_type):
+                    raise arguments_exception(f"Некорректный тип модели в коллекции '{field}'", field)
+                key = item.name.strip().lower()
+                if key in items:
+                    raise arguments_exception(f"Повторное наименование в коллекции '{field}'", field)
+                if item.id in identifiers:
+                    raise arguments_exception(f"Повторный идентификатор в коллекции '{field}'", field)
+                items[key] = item
+                identifiers.add(item.id)
+            collections[field] = items
+        return collections
 
     def save(self, file_name: str = "storage.json") -> str:
         """

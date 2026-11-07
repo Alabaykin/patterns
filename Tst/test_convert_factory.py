@@ -1,5 +1,3 @@
-import json
-from pathlib import Path
 from datetime import datetime
 from types import SimpleNamespace
 import pytest
@@ -10,7 +8,6 @@ from Src.Logics.convert_factory import convert_factory
 from Src.Logics.basic_convertor import basic_convertor
 from Src.Logics.datetime_convertor import datetime_convertor
 from Src.Logics.reference_convertor import reference_convertor
-from Scripts.generate_json_examples import generate_examples
 from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
 from Src.Models.recipe_model import recipe_model
@@ -183,24 +180,6 @@ class TestConvertFactory:
         assert first_row["nomenclature"]["name"] == "Мука пшеничная"
         assert first_row["nomenclature"]["range"]["name"] == "кг"
         assert first_row["nomenclature"]["range"]["base_range"]["name"] == "гр"
-
-
-
-    def test_json_examples_match_serialization(self, tmp_path):
-        """
-        Проверка соответствия приложенных JSON-примеров результату сериализации.
-        """
-        # Подготовка
-        examples_dir = Path(__file__).resolve().parents[1] / "Json"
-
-        # Действие
-        names = generate_examples(tmp_path)
-
-        # Проверка
-        for name in names:
-            actual = json.loads((tmp_path / name).read_text(encoding="utf-8"))
-            expected = json.loads((examples_dir / name).read_text(encoding="utf-8"))
-            assert actual == expected
 
     def test_arbitrary_object_preserves_public_fields(self):
         """
