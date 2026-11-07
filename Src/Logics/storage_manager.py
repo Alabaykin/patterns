@@ -215,7 +215,7 @@ class storage_manager(abstract_manager):
 
     def _deserialize_collections(self, data: dict) -> dict:
         """
-        Восстановление коллекций во временные словари с проверкой структуры и уникальности.
+        Восстановление коллекций в порядке файла с проверкой типа и уникальности моделей.
         """
         model_types = {
             "ranges": range_model,
@@ -237,14 +237,20 @@ class storage_manager(abstract_manager):
 
         factory = deserialize_factory()
         collections = {}
-        for field, model_type in model_types.items():
-            if not isinstance(data[field], list):
+        for field, records in data.items():
+            if not isinstance(records, list):
                 raise arguments_exception(f"Коллекция '{field}' должна быть списком", field)
-            deserializer = factory.create(model_type)
+            model_type = model_types[field]
             items = {}
             identifiers = set()
-            for item_data in data[field]:
-                item = deserializer.deserialize(item_data)
+            for item_data in records:
+                if not isinstance(item_data, dict):
+                    raise arguments_exception("Данные модели должны быть словарём", "data")
+                if "type" not in item_data:
+                    raise arguments_exception(f"У модели в коллекции '{field}' отсутствует метка типа", "type")
+                item = factory.deserialize(item_data)
+                if not isinstance(item, model_type):
+                    raise arguments_exception(f"Некорректный тип модели в коллекции '{field}'", field)
                 key = item.name.strip().lower()
                 if key in items:
                     raise arguments_exception(f"Повторное наименование в коллекции '{field}'", field)

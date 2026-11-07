@@ -1,7 +1,9 @@
 import json
+from unittest.mock import patch
 import pytest
 from Src.Core.exception import arguments_exception, operation_exception
 from Src.Logics.convert_factory import convert_factory
+from Src.Logics.deserialize_factory import deserialize_factory
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.group_model import group_model
 from Src.Models.nomenclature_model import nomenclature_model
@@ -53,7 +55,8 @@ def test_storage_save_and_load_restores_all_models(tmp_path):
     }
 
     # Действие
-    storage.load(str(path))
+    with patch.object(deserialize_factory, "create", side_effect=AssertionError("Ожидается загрузка по type")):
+        storage.load(str(path))
 
     # Проверка
     assert storage.is_loaded is True
@@ -121,6 +124,40 @@ def test_loaded_storage_can_be_saved_again(tmp_path):
     # Проверка
     assert json.loads(target_path.read_text(encoding="utf-8")) == expected
     assert convert_factory().serialize(storage.data) == convert_factory().serialize(sources)
+
+
+def test_storage_load_rejects_model_without_type(tmp_path):
+    """
+    Проверка ошибки при отсутствии метки типа у модели в JSON.
+    """
+    # Подготовка
+    storage, sources, path = _prepare_storage_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data["groups"][0]["type"]
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    # Действие и Проверка
+    with pytest.raises(arguments_exception) as error:
+        storage.load(str(path))
+    assert error.value.field == "type"
+    _assert_storage_unchanged(storage, sources)
+
+
+def test_storage_load_rejects_tagged_model_in_wrong_collection(tmp_path):
+    """
+    Проверка, что метка типа не позволяет загрузить модель в чужую коллекцию.
+    """
+    # Подготовка
+    storage, sources, path = _prepare_storage_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["groups"][0] = data["warehouses"][0]
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    # Действие и Проверка
+    with pytest.raises(arguments_exception) as error:
+        storage.load(str(path))
+    assert error.value.field == "groups"
+    _assert_storage_unchanged(storage, sources)
 
 
 def test_storage_load_accepts_empty_collections(tmp_path):
