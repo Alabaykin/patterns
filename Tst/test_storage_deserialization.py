@@ -1,9 +1,7 @@
 import json
-from unittest.mock import patch
 import pytest
 from Src.Core.exception import arguments_exception, operation_exception
 from Src.Logics.convert_factory import convert_factory
-from Src.Logics.deserialize_factory import deserialize_factory
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.group_model import group_model
 from Src.Models.nomenclature_model import nomenclature_model
@@ -55,8 +53,7 @@ def test_storage_save_and_load_restores_all_models(tmp_path):
     }
 
     # Действие
-    with patch.object(deserialize_factory, "create", side_effect=AssertionError("Ожидается загрузка по type")):
-        storage.load(str(path))
+    storage.load(str(path))
 
     # Проверка
     assert storage.is_loaded is True

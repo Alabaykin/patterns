@@ -4,7 +4,6 @@ import pytest
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.recipe_deserializer import recipe_deserializer
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.range_model import range_model
@@ -23,7 +22,7 @@ def test_restore_storage_recipes_from_json():
     serializer = convert_factory()
     expected = serializer.serialize(sources)
     json_data = json.dumps(expected, ensure_ascii=False)
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = [deserializer.deserialize(data) for data in json.loads(json_data)]
@@ -67,7 +66,7 @@ def test_restore_recipe_with_multiple_nested_levels():
     source = recipe_model("Готовое блюдо", [nested_row, sugar_row], output_range=kilogram)
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -93,7 +92,7 @@ def test_restore_empty_recipe_with_null_references():
     # Подготовка
     source = recipe_model("Новый рецепт")
     data = json.loads(json.dumps(convert_factory().serialize(source), ensure_ascii=False))
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(data)
@@ -116,7 +115,7 @@ def test_restored_recipe_supports_independent_row_changes():
     # Подготовка
     source = recipe_model("Тесто", [recipe_row_model.create_flour_row(0.5, 0.48)])
     data = convert_factory().serialize(source)
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
     restored = deserializer.deserialize(data)
     sugar_row = recipe_row_model.create_sugar_row(0.2, 0.19)
 
@@ -136,19 +135,20 @@ def test_restored_recipe_supports_independent_row_changes():
     assert convert_factory().serialize(source) == data
 
 
-def test_reject_missing_recipe_rows():
+def test_use_default_recipe_rows_when_absent():
     """
-    Проверка запрета подмены отсутствующего списка строк пустым рецептом.
+    Проверка применения значения списка строк по умолчанию из конструктора.
     """
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     del data["rows"]
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
-    # Действие и Проверка
-    with pytest.raises(arguments_exception) as error:
-        deserializer.deserialize(data)
-    assert error.value.field == "rows"
+    # Действие
+    restored = deserializer.deserialize(data)
+
+    # Проверка
+    assert restored.rows == []
 
 
 def test_reject_null_recipe_rows():
@@ -158,7 +158,7 @@ def test_reject_null_recipe_rows():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["rows"] = None
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -173,7 +173,7 @@ def test_reject_dictionary_recipe_rows():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["rows"] = {}
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -188,7 +188,7 @@ def test_reject_invalid_recipe_row_element():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["rows"] = [123]
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -202,7 +202,7 @@ def test_reject_numeric_recipe_steps():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["steps"] = 123
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -217,7 +217,7 @@ def test_reject_string_recipe_output_range():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["output_range"] = "кг"
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -231,20 +231,8 @@ def test_reject_incomplete_recipe_target_nomenclature():
     # Подготовка
     data = convert_factory().serialize(recipe_model("Тесто"))
     data["target_nomenclature"] = {"id": "product-1", "name": "Тесто"}
-    deserializer = deserialize_factory().create(recipe_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
         deserializer.deserialize(data)
-
-
-def test_reject_invalid_recipe_factory():
-    """
-    Проверка типа фабрики, переданной десериализатору рецепта.
-    """
-    # Подготовка
-    factory = object()
-
-    # Действие и Проверка
-    with pytest.raises(arguments_exception):
-        recipe_deserializer(factory)

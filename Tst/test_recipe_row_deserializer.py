@@ -3,7 +3,6 @@ import pytest
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.recipe_row_deserializer import recipe_row_deserializer
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.range_model import range_model
 from Src.Models.recipe_model import recipe_model
@@ -19,7 +18,7 @@ def test_restore_recipe_row_from_json():
     source.name = "Мука для основного замеса"
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -49,7 +48,7 @@ def test_restore_recipe_row_with_sub_recipe():
     source.sub_recipe = recipe_model.create_dough_recipe()
     serializer = convert_factory()
     data = json.loads(json.dumps(serializer.serialize(source), ensure_ascii=False))
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(data)
@@ -69,7 +68,7 @@ def test_reject_missing_recipe_row_net():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     del data["net"]
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -84,7 +83,7 @@ def test_reject_zero_recipe_row_gross():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     data["gross"] = 0
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -99,7 +98,7 @@ def test_reject_string_recipe_row_net():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     data["net"] = "0.25"
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -114,7 +113,7 @@ def test_reject_empty_recipe_row_name():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     data["name"] = ""
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -129,7 +128,7 @@ def test_reject_null_recipe_row_nomenclature():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     data["nomenclature"] = None
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -143,20 +142,8 @@ def test_reject_invalid_sub_recipe_data():
     # Подготовка
     data = convert_factory().serialize(recipe_row_model.create_flour_row())
     data["sub_recipe"] = "Рецепт полуфабриката"
-    deserializer = deserialize_factory().create(recipe_row_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
         deserializer.deserialize(data)
-
-
-def test_reject_invalid_recipe_row_factory():
-    """
-    Проверка типа фабрики, переданной десериализатору строки рецепта.
-    """
-    # Подготовка
-    factory = object()
-
-    # Действие и Проверка
-    with pytest.raises(arguments_exception):
-        recipe_row_deserializer(factory)

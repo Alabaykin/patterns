@@ -1,10 +1,8 @@
 import json
-from unittest.mock import patch
 import pytest
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.range_deserializer import range_deserializer
 from Src.Models.range_model import range_model
 
 
@@ -17,7 +15,7 @@ def test_restore_gram_from_json():
     source = create()
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(range_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -47,7 +45,7 @@ def test_restore_kilogram_from_json():
     source = create()
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(range_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -77,7 +75,7 @@ def test_restore_liter_from_json():
     source = create()
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(range_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -98,25 +96,21 @@ def test_restore_liter_from_json():
         assert restored.convert_to(restored.base_range, 2) == source.convert_to(source.base_range, 2)
 
 
-def test_restore_deep_range_chain_through_injected_factory():
+def test_restore_deep_range_chain():
     """
-    Проверка рекурсивного восстановления нескольких уровней через переданную фабрику.
+    Проверка рекурсивного восстановления нескольких уровней вложенности.
     """
     # Подготовка
     gram = range_model.create_gramm()
     kilogram = range_model("кг", 1000, gram)
     ton = range_model("т", 1000, kilogram)
     data = convert_factory().serialize(ton)
-    factory = deserialize_factory()
-    deserializer = factory.create(range_model)
+    deserializer = deserialize_factory()
 
     # Действие
-    with patch.object(factory, "create", wraps=factory.create) as create:
-        restored = deserializer.deserialize(data)
+    restored = deserializer.deserialize(data)
 
     # Проверка
-    assert deserializer.factory is factory
-    assert create.call_count == 2
     assert restored.id == ton.id
     assert restored.base_range.id == kilogram.id
     assert restored.base_range.base_range.id == gram.id
@@ -131,7 +125,8 @@ def test_reject_zero_range_coefficient():
     # Подготовка
     coefficient = 0
     data = {"id": "range-1", "name": "кг", "coefficient": coefficient, "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -146,7 +141,8 @@ def test_reject_negative_range_coefficient():
     # Подготовка
     coefficient = -1
     data = {"id": "range-1", "name": "кг", "coefficient": coefficient, "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -161,7 +157,8 @@ def test_reject_boolean_range_coefficient():
     # Подготовка
     coefficient = True
     data = {"id": "range-1", "name": "кг", "coefficient": coefficient, "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -176,7 +173,8 @@ def test_reject_string_range_coefficient():
     # Подготовка
     coefficient = "1000"
     data = {"id": "range-1", "name": "кг", "coefficient": coefficient, "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -191,7 +189,8 @@ def test_reject_none_range_coefficient():
     # Подготовка
     coefficient = None
     data = {"id": "range-1", "name": "кг", "coefficient": coefficient, "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -206,7 +205,8 @@ def test_reject_list_nested_range():
     # Подготовка
     base_range = []
     data = {"id": "range-2", "name": "кг", "coefficient": 1000, "base_range": base_range}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -220,7 +220,8 @@ def test_reject_string_nested_range():
     # Подготовка
     base_range = "range-1"
     data = {"id": "range-2", "name": "кг", "coefficient": 1000, "base_range": base_range}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -234,7 +235,8 @@ def test_reject_numeric_nested_range():
     # Подготовка
     base_range = 1
     data = {"id": "range-2", "name": "кг", "coefficient": 1000, "base_range": base_range}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -248,34 +250,25 @@ def test_reject_incomplete_nested_range():
     # Подготовка
     base_range = {"id": "range-1"}
     data = {"id": "range-2", "name": "кг", "coefficient": 1000, "base_range": base_range}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
         deserializer.deserialize(data)
 
 
-def test_reject_missing_range_coefficient():
+def test_use_default_range_coefficient_when_absent():
     """
-    Проверка запрета подмены отсутствующего коэффициента значением по умолчанию.
+    Проверка применения значения коэффициента по умолчанию из конструктора.
     """
     # Подготовка
     data = {"id": "range-1", "name": "кг", "base_range": None}
-    deserializer = deserialize_factory().create(range_model)
+    data["type"] = "Src.Models.range_model.range_model"
+    deserializer = deserialize_factory()
 
-    # Действие и Проверка
-    with pytest.raises(arguments_exception) as error:
-        deserializer.deserialize(data)
-    assert error.value.field == "coefficient"
+    # Действие
+    restored = deserializer.deserialize(data)
 
-
-def test_reject_invalid_deserializer_factory():
-    """
-    Проверка типа фабрики, переданной десериализатору единиц измерения.
-    """
-    # Подготовка
-    factory = object()
-
-    # Действие и Проверка
-    with pytest.raises(arguments_exception):
-        range_deserializer(factory)
+    # Проверка
+    assert restored.coefficient == 1.0

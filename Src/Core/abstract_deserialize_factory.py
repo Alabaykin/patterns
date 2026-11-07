@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from Src.Core.abstract_deserializer import abstract_deserializer
-from Src.Core.abstract_entity import abstract_entity
 
 
 class abstract_deserialize_factory(ABC):
@@ -15,9 +14,9 @@ class abstract_deserialize_factory(ABC):
         super().__init__()
 
     @abstractmethod
-    def create(self, model_type: type[abstract_entity]) -> abstract_deserializer:
+    def create(self, type_name: str) -> abstract_deserializer:
         """
-        Подбор десериализатора для указанного типа доменной модели.
+        Подбор десериализатора по метке типа из JSON.
         """
         pass
 

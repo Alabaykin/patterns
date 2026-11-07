@@ -1,11 +1,9 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import patch
 import pytest
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.nomenclature_deserializer import nomenclature_deserializer
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.group_model import group_model
 from Src.Models.nomenclature_model import nomenclature_model
@@ -20,7 +18,7 @@ def test_restore_nomenclature_from_json():
     source = nomenclature_model.create_flour()
     serializer = convert_factory()
     json_data = json.dumps(serializer.serialize(source), ensure_ascii=False)
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = deserializer.deserialize(json.loads(json_data))
@@ -56,7 +54,7 @@ def test_restore_storage_nomenclatures_from_json():
     serializer = convert_factory()
     expected = serializer.serialize(sources)
     json_data = json.dumps(expected, ensure_ascii=False)
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие
     restored = [deserializer.deserialize(data) for data in json.loads(json_data)]
@@ -75,27 +73,6 @@ def test_restore_storage_nomenclatures_from_json():
     assert serializer.serialize(restored) == expected
 
 
-def test_restore_nomenclature_uses_injected_factory():
-    """
-    Проверка выбора обработчиков ссылочных полей через переданную фабрику.
-    """
-    # Подготовка
-    data = convert_factory().serialize(nomenclature_model.create_flour())
-    factory = deserialize_factory()
-    deserializer = factory.create(nomenclature_model)
-
-    # Действие
-    with patch.object(factory, "create", wraps=factory.create) as create:
-        restored = deserializer.deserialize(data)
-
-    # Проверка
-    assert deserializer.factory is factory
-    create.assert_any_call(group_model)
-    create.assert_any_call(range_model)
-    assert restored.group.id == data["group"]["id"]
-    assert restored.range.id == data["range"]["id"]
-
-
 def test_reject_missing_nomenclature_full_name():
     """
     Проверка исключения при отсутствии обязательного полного наименования.
@@ -103,7 +80,7 @@ def test_reject_missing_nomenclature_full_name():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     del data["full_name"]
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -118,7 +95,7 @@ def test_reject_empty_nomenclature_full_name():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["full_name"] = ""
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -133,7 +110,7 @@ def test_reject_too_long_nomenclature_full_name():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["full_name"] = "а" * 256
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -148,7 +125,7 @@ def test_reject_unknown_nomenclature_field():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["extra"] = "Лишнее поле"
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -163,7 +140,7 @@ def test_reject_null_nomenclature_group():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["group"] = None
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -177,7 +154,7 @@ def test_reject_invalid_nested_group_name():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["group"]["name"] = ""
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
@@ -192,7 +169,7 @@ def test_reject_null_nomenclature_range():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["range"] = None
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception):
@@ -206,21 +183,9 @@ def test_reject_invalid_nested_range_coefficient():
     # Подготовка
     data = convert_factory().serialize(nomenclature_model.create_flour())
     data["range"]["coefficient"] = 0
-    deserializer = deserialize_factory().create(nomenclature_model)
+    deserializer = deserialize_factory()
 
     # Действие и Проверка
     with pytest.raises(arguments_exception) as error:
         deserializer.deserialize(data)
     assert error.value.field == "coefficient"
-
-
-def test_reject_invalid_nomenclature_factory():
-    """
-    Проверка типа фабрики, переданной десериализатору номенклатуры.
-    """
-    # Подготовка
-    factory = object()
-
-    # Действие и Проверка
-    with pytest.raises(arguments_exception):
-        nomenclature_deserializer(factory)

@@ -30,29 +30,3 @@ class abstract_deserializer(ABC):
         Восстановление модели и ее идентификатора из словаря JSON.
         """
         pass
-
-    def _validate_data(self, data: dict, fields: set[str]) -> None:
-        """
-        Проверка структуры словаря и наличия всех полей сериализованной модели.
-        """
-        if not isinstance(data, dict):
-            raise arguments_exception("Данные модели должны быть словарем", "data")
-        missing = fields - data.keys()
-        if missing:
-            field = sorted(missing)[0]
-            raise arguments_exception(f"Отсутствует обязательное поле '{field}'", field)
-        unexpected = data.keys() - fields - {"type"}
-        if unexpected:
-            field = str(next(iter(unexpected)))
-            raise arguments_exception(f"Неизвестное поле модели '{field}'", field)
-        model_type = self.model_type
-        expected_type = f"{model_type.__module__}.{model_type.__qualname__}"
-        if "type" in data and data["type"] != expected_type:
-            raise arguments_exception("Тип JSON не соответствует модели", "type")
-
-    def _restore_id(self, model: abstract_entity, data: dict) -> abstract_entity:
-        """
-        Восстановление исходного идентификатора через проверку свойства модели.
-        """
-        model.id = data["id"]
-        return model
