@@ -41,10 +41,14 @@ class abstract_deserializer(ABC):
         if missing:
             field = sorted(missing)[0]
             raise arguments_exception(f"Отсутствует обязательное поле '{field}'", field)
-        unexpected = data.keys() - fields
+        unexpected = data.keys() - fields - {"type"}
         if unexpected:
             field = str(next(iter(unexpected)))
             raise arguments_exception(f"Неизвестное поле модели '{field}'", field)
+        model_type = self.model_type
+        expected_type = f"{model_type.__module__}.{model_type.__qualname__}"
+        if "type" in data and data["type"] != expected_type:
+            raise arguments_exception("Тип JSON не соответствует модели", "type")
 
     def _restore_id(self, model: abstract_entity, data: dict) -> abstract_entity:
         """

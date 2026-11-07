@@ -20,3 +20,10 @@ class abstract_deserialize_factory(ABC):
         Подбор десериализатора для указанного типа доменной модели.
         """
         pass
+
+    @abstractmethod
+    def deserialize(self, data: object) -> object:
+        """
+        Восстановление значений из JSON с определением типов вложенных моделей.
+        """
+        pass

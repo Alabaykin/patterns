@@ -11,6 +11,14 @@ class abstract_entity(ABC):
     _name: str = ""
 
     @property
+    def type(self) -> str:
+        """
+        Полное имя класса модели для восстановления из JSON.
+        """
+        cls = self.__class__
+        return f"{cls.__module__}.{cls.__qualname__}"
+
+    @property
     def id(self) -> str:
         """
         Возвращает id сущности.
