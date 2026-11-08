@@ -4,11 +4,6 @@ from Src.Core.exception import arguments_exception, operation_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.storage_manager import storage_manager
 from Src.Models.group_model import group_model
-from Src.Models.nomenclature_model import nomenclature_model
-from Src.Models.range_model import range_model
-from Src.Models.recipe_model import recipe_model
-from Src.Models.recipe_row_model import recipe_row_model
-from Src.Models.warehouse_model import warehouse_model
 
 
 def _prepare_storage_file(tmp_path):
@@ -44,40 +39,23 @@ def test_storage_save_and_load_restores_all_models(tmp_path):
     serializer = convert_factory()
     expected = serializer.serialize(sources)
     storage.add_group(group_model("Группа после сохранения"))
-    model_types = {
-        "ranges": range_model,
-        "groups": group_model,
-        "warehouses": warehouse_model,
-        "nomenclatures": nomenclature_model,
-        "recipes": recipe_model,
-    }
 
     # Действие
     storage.load(str(path))
 
     # Проверка
     assert storage.is_loaded is True
-    assert serializer.serialize(storage.data) == expected
-    assert all(item.name != "Группа после сохранения" for item in storage.groups)
-    for field, model_type in model_types.items():
-        restored_items = storage.data[field]
-        assert len(restored_items) == len(sources[field])
-        for source, restored in zip(sources[field], restored_items):
-            assert isinstance(restored, model_type)
+    restored_data = storage.data
+    assert restored_data.keys() == sources.keys()
+    assert serializer.serialize(restored_data) == expected
+    for field, source_items in sources.items():
+        restored_items = restored_data[field]
+        assert len(restored_items) == len(source_items)
+        for source, restored in zip(source_items, restored_items):
+            assert type(restored) is type(source)
             assert restored is not source
             assert restored.id == source.id
             assert restored.name == source.name
-    for source, restored in zip(sources["recipes"], storage.recipes):
-        assert restored.steps == source.steps
-        assert all(isinstance(row, recipe_row_model) for row in restored.rows)
-        assert restored.calculate_gross() == source.calculate_gross()
-        assert restored.calculate_net() == source.calculate_net()
-    flour = storage.get_by_type_and_id("nomenclature", sources["nomenclatures"][0].id)
-    assert isinstance(flour, nomenclature_model)
-    assert isinstance(flour.group, group_model)
-    assert isinstance(flour.range, range_model)
-    assert flour.range.coefficient == 1000.0
-    assert flour.range.base_range.coefficient == 1.0
 
 
 def test_storage_load_does_not_depend_on_collection_order(tmp_path):

@@ -32,6 +32,21 @@ classDiagram
         +id str
         +name str
         +type str
+        +from_dict(data) abstract_entity
+        #_create_from_fields(fields) abstract_entity
+    }
+    class nomenclature_model {
+        #_create_from_fields(fields) nomenclature_model
+    }
+    class organization_model {
+        #_create_from_fields(fields) organization_model
+    }
+    class recipe_model {
+        #_create_from_fields(fields) recipe_model
+        +add_row(row) None
+    }
+    class recipe_row_model {
+        #_create_from_fields(fields) recipe_row_model
     }
 
     abstract_deserialize_factory <|-- deserialize_factory
@@ -39,5 +54,9 @@ classDiagram
     storage_manager ..> deserialize_factory 
     deserialize_factory ..> domain_deserializer
     domain_deserializer --> abstract_deserialize_factory
-    domain_deserializer ..> abstract_entity
+    domain_deserializer ..> abstract_entity : передаёт восстановленные поля в from_dict
+    abstract_entity <|-- nomenclature_model
+    abstract_entity <|-- organization_model
+    abstract_entity <|-- recipe_model
+    abstract_entity <|-- recipe_row_model
 ```

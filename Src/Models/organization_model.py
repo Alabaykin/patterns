@@ -1,3 +1,4 @@
+from typing import Self
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 
@@ -25,6 +26,19 @@ class organization_model(abstract_entity):
         self.bik = bik
         self.account = account
         self.ownership_type = ownership_type
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict) -> Self:
+        """
+        Создание организации с обязательными реквизитами из данных.
+        """
+        return cls(
+            cls._take_required_field(fields, "name"),
+            cls._take_required_field(fields, "inn"),
+            cls._take_required_field(fields, "bik"),
+            cls._take_required_field(fields, "account"),
+            cls._take_required_field(fields, "ownership_type"),
+        )
 
     @property
     def inn(self) -> str:

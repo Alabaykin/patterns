@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Self
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
 from Src.Core.exception import arguments_exception, operation_exception
@@ -42,6 +43,19 @@ class recipe_model(abstract_entity):
         self.steps = steps
         self.output_range = output_range
         self.target_nomenclature = target_nomenclature
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict) -> Self:
+        """
+        Создание рецепта с восстановлением строк через add_row.
+        """
+        rows = fields.pop("rows", [])
+        if not isinstance(rows, list):
+            raise arguments_exception("Ожидается список", "rows")
+        model = super()._create_from_fields(fields)
+        for row in rows:
+            model.add_row(row)
+        return model
 
     @property
     def rows(self) -> list[recipe_row_model]:

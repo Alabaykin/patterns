@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Self
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
 from Src.Core.exception import arguments_exception
@@ -39,6 +40,18 @@ class recipe_row_model(abstract_entity):
         self.net = net
         self.sub_recipe = sub_recipe
         self.name = nomenclature.name
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict) -> Self:
+        """
+        Создание строки рецепта с обязательными данными об ингредиенте и его весе.
+        """
+        return cls(
+            cls._take_required_field(fields, "nomenclature"),
+            cls._take_required_field(fields, "range"),
+            cls._take_required_field(fields, "gross"),
+            cls._take_required_field(fields, "net"),
+        )
 
     @property
     def sub_recipe(self):

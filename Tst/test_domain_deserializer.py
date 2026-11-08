@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 import pytest
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
@@ -66,3 +67,30 @@ def test_reject_unregistered_json_type():
     with pytest.raises(arguments_exception) as error:
         factory.deserialize(data)
     assert error.value.field == "type"
+
+
+def test_restore_model_after_constructor_parameter_rename():
+    """
+    Проверка загрузки прежнего JSON после переименования параметра конструктора.
+    """
+    # Подготовка
+    serializer = convert_factory()
+    data = serializer.serialize(range_model.create_kilogramm())
+    factory = deserialize_factory()
+    original_init = range_model.__init__
+
+    def initialize(model, label):
+        """
+        Создание единицы с новым именем параметра и прежними свойствами.
+        """
+        original_init(model, label)
+
+    # Действие
+    with patch.object(range_model, "__init__", initialize):
+        restored = factory.deserialize(data)
+
+    # Проверка
+    assert isinstance(restored, range_model)
+    assert restored.name == data["name"]
+    assert restored.coefficient == 1000.0
+    assert serializer.serialize(restored) == data
