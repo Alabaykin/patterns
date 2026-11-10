@@ -1,5 +1,7 @@
 from abc import ABC
+from inspect import getattr_static
 import uuid
+from typing import Self
 from Src.Core.exception import arguments_exception
 
 class abstract_entity(ABC):
@@ -9,6 +11,52 @@ class abstract_entity(ABC):
 
     _id: str = None
     _name: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Self:
+        """
+        Создание сущности из восстановленных полей с проверкой записываемых свойств.
+        """
+        if not isinstance(data, dict):
+            raise arguments_exception("Поля модели должны быть словарём", "data")
+        if "id" not in data:
+            raise arguments_exception("Отсутствует идентификатор модели", "id")
+
+        fields = data.copy()
+        model = cls._create_from_fields(fields)
+        for field, value in fields.items():
+            if not isinstance(field, str) or field.startswith("_"):
+                raise arguments_exception("Ожидается имя публичного свойства", str(field))
+            attribute = getattr_static(cls, field, None)
+            if not isinstance(attribute, property) or attribute.fset is None:
+                raise arguments_exception(f"Неизвестное или недоступное для записи поле '{field}'", field)
+            setattr(model, field, value)
+        return model
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict) -> Self:
+        """
+        Создание именованной модели с извлечением полей, нужных при создании.
+        Модель переопределяет метод, если ей требуется дополнительная инициализация.
+        """
+        return cls(cls._take_required_field(fields, "name"))
+
+    @staticmethod
+    def _take_required_field(fields: dict, field: str) -> object:
+        """
+        Извлечение обязательного поля из рабочей копии данных модели.
+        """
+        if field not in fields:
+            raise arguments_exception("Отсутствует обязательное поле", field)
+        return fields.pop(field)
+
+    @property
+    def type(self) -> str:
+        """
+        Полное имя класса модели для восстановления из JSON.
+        """
+        cls = self.__class__
+        return f"{cls.__module__}.{cls.__qualname__}"
 
     @property
     def id(self) -> str:

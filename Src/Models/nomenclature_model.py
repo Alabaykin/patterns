@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Self
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 from Src.Models.group_model import group_model
@@ -25,6 +26,18 @@ class nomenclature_model(abstract_entity):
         self.full_name = full_name
         self.group = group
         self.range = range
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict) -> Self:
+        """
+        Создание номенклатуры с обязательными ссылками на группу и единицу измерения.
+        """
+        return cls(
+            cls._take_required_field(fields, "name"),
+            cls._take_required_field(fields, "full_name"),
+            cls._take_required_field(fields, "group"),
+            cls._take_required_field(fields, "range"),
+        )
 
     @property
     def full_name(self) -> str:
