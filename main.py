@@ -1,10 +1,13 @@
-from flask import Flask, Response, request, abort
+import connexion
+from connexion.resolver import RelativeResolver
+from flask import Response, jsonify, redirect
+from Src.Core.exception import arguments_exception
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.storage_manager import storage_manager
 from Src.Logics.report_factory import report_factory
 from Src.Dtos.report_type_enum import report_type_enum
 
-app = Flask(__name__)
+app = connexion.FlaskApp(__name__)
 
 settings = settings_manager()
 settings.load()
@@ -16,14 +19,36 @@ factory = report_factory(settings.settings)
 report = factory.create(report_type_enum.TXT)
 
 
-@app.route("/api/get_report", methods=["GET"])
+@app.route("/")
+@app.route("/docs")
+def swagger_ui_redirect():
+    """Открыть встроенный интерфейс Swagger UI."""
+    return redirect("/ui/")
+
+
+@app.app.errorhandler(arguments_exception)
+def invalid_arguments(error):
+    """Вернуть ошибку аргументов приложения в формате JSON."""
+    return jsonify(detail=str(error)), 400
+
+
+def get_entities():
+    """Получить типы сущностей, поддерживаемых хранилищем."""
+    return jsonify(storage.entity_types)
+
+
+def get_default_report(entity: str, unique_code: str):
+    """Получить отчёт по умолчанию; параметры проверяет и передаёт Connexion."""
+    return get_entity_report_default(entity, unique_code)
+
+
 def get_report():
+    """Получить текстовый отчёт по первому рецепту."""
     recipe = storage.recipes[0]
     result = report.build(recipe)
     return Response(result.text, mimetype="text/plain; charset=utf-8")
 
 
-@app.route("/api/report/<string:format_name>/<string:entity_type>/<string:entity_id>", methods=["GET"])
 def get_entity_report(format_name: str, entity_type: str, entity_id: str):
     """
     Метод GET формирует отчет в указанном формате и для указанного типа и кода сущности.
@@ -40,12 +65,11 @@ def get_entity_report(format_name: str, entity_type: str, entity_id: str):
     if entity is None:
         return Response(f"Сущность типа '{entity_type}' с id '{entity_id}' не найдена", status=404, mimetype="text/plain; charset=utf-8")
 
-    rep = factory.create(fmt_enum, entity_type)
+    rep = factory.create(fmt_enum)
     result = rep.build(entity)
     return rep.create_response(result, f"{entity_type}_{entity_id}")
 
 
-@app.route("/api/report/default/<string:entity_type>/<string:entity_id>", methods=["GET"])
 def get_entity_report_default(entity_type: str, entity_id: str):
     """
     Метод GET формирует данные для указанного типа и кода сущности с использованием create_default.
@@ -54,10 +78,16 @@ def get_entity_report_default(entity_type: str, entity_id: str):
     if entity is None:
         return Response(f"Сущность типа '{entity_type}' с id '{entity_id}' не найдена", status=404, mimetype="text/plain; charset=utf-8")
 
-    rep = factory.create_default(entity_type)
+    rep = factory.create_default()
     result = rep.build(entity)
     return rep.create_response(result, f"{entity_type}_{entity_id}_default")
 
 
+app.add_api(
+    "openapi.yaml",
+    resolver=RelativeResolver(__name__),
+)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8070)
+    app.run(host="0.0.0.0", port=8089)

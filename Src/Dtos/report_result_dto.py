@@ -1,10 +1,9 @@
-from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
 
 """
 Модель для хранения результата формирования отчёта.
 """
-class report_result_dto(abstract_entity):
+class report_result_dto:
     __text: str = ""
     __binary: list = []
 

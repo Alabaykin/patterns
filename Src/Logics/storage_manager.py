@@ -19,6 +19,19 @@ class storage_manager(abstract_manager):
     Хранит уникальные объекты единиц измерения, групп номенклатуры, складов и номенклатуры в оперативной памяти (кэш).
     """
 
+    _collection_models = {
+        "ranges": range_model,
+        "groups": group_model,
+        "warehouses": warehouse_model,
+        "nomenclatures": nomenclature_model,
+        "recipes": recipe_model,
+    }
+
+    @property
+    def entity_types(self) -> list[str]:
+        """Ключи типов моделей, поддерживаемых хранилищем."""
+        return [model.__name__ for model in self._collection_models.values()]
+
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, 'instance'):
             cls.instance = super(storage_manager, cls).__new__(cls)
@@ -217,13 +230,7 @@ class storage_manager(abstract_manager):
         """
         Восстановление коллекций в порядке файла с проверкой типа и уникальности моделей.
         """
-        model_types = {
-            "ranges": range_model,
-            "groups": group_model,
-            "warehouses": warehouse_model,
-            "nomenclatures": nomenclature_model,
-            "recipes": recipe_model,
-        }
+        model_types = self._collection_models
         if not isinstance(data, dict):
             raise arguments_exception("Корень JSON хранилища должен быть словарем", "data")
         missing = model_types.keys() - data.keys()

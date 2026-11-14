@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: API «Ромашка»
+  version: "1.0"
+  description: Получение списка доменных сущностей и отчётов.
+servers:
+  - url: /
+paths:
+  /api/get_entities:
+    get:
+      operationId: get_entities
+      summary: Получить список типов доменных сущностей
+      responses:
+        '200':
+          description: Типы моделей, поддерживаемых хранилищем.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: [range_model, group_model, warehouse_model, nomenclature_model, recipe_model]
+
+  /api/get_default_report:
+    get:
+      operationId: get_default_report
+      summary: Получить отчёт в формате из настроек
+      description: >-
+        Формат берётся из настроек. Все типы из /api/get_entities поддерживаются
+        общим механизмом построения отчётов. CSV и Markdown скачиваются как файлы.
+      parameters:
+        - name: entity
+          in: query
+          required: true
+          description: Тип модели, для которой строится отчёт.
+          schema:
+            $ref: '#/components/schemas/NonBlankString'
+          example: range_model
+        - name: unique_code
+          in: query
+          required: true
+          description: ID объекта или его точное наименование.
+          schema:
+            $ref: '#/components/schemas/NonBlankString'
+          example: кг
+      responses:
+        '200':
+          $ref: '#/components/responses/Report'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/get_report:
+    get:
+      operationId: get_report
+      summary: Получить TXT-отчёт по первому рецепту
+      responses:
+        '200':
+          description: Текстовый отчёт.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/report/default/{entity_type}/{entity_id}:
+    parameters:
+      - $ref: '#/components/parameters/EntityType'
+      - $ref: '#/components/parameters/EntityId'
+    get:
+      operationId: get_entity_report_default
+      summary: Получить отчёт в формате из настроек по адресу сущности
+      responses:
+        '200':
+          $ref: '#/components/responses/Report'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/report/{format_name}/{entity_type}/{entity_id}:
+    parameters:
+      - name: format_name
+        in: path
+        required: true
+        description: Формат отчёта (txt, markdown, md, csv, xml, html).
+        schema:
+          $ref: '#/components/schemas/NonBlankString'
+        example: csv
+      - $ref: '#/components/parameters/EntityType'
+      - $ref: '#/components/parameters/EntityId'
+    get:
+      operationId: get_entity_report
+      summary: Получить отчёт в указанном формате
+      responses:
+        '200':
+          $ref: '#/components/responses/Report'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    NonBlankString:
+      type: string
+      minLength: 1
+      pattern: '\S'
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+  parameters:
+    EntityType:
+      name: entity_type
+      in: path
+      required: true
+      description: Тип сущности из /api/get_entities.
+      schema:
+        $ref: '#/components/schemas/NonBlankString'
+      example: range_model
+    EntityId:
+      name: entity_id
+      in: path
+      required: true
+      description: ID объекта или его точное наименование.
+      schema:
+        $ref: '#/components/schemas/NonBlankString'
+      example: кг
+  responses:
+    Report:
+      description: >-
+        Отчёт в выбранном формате. Для CSV и Markdown ответ содержит заголовок
+        Content-Disposition с именем скачиваемого файла.
+      headers:
+        Content-Disposition:
+          schema:
+            type: string
+      content:
+        text/plain:
+          schema:
+            type: string
+        text/markdown:
+          schema:
+            type: string
+            format: binary
+        text/csv:
+          schema:
+            type: string
+            format: binary
+        application/xml:
+          schema:
+            type: string
+        text/html:
+          schema:
+            type: string
+    BadRequest:
+      description: Некорректные параметры или неизвестный формат отчёта.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+    NotFound:
+      description: Сущность не найдена.
+      content:
+        text/plain:
+          schema:
+            type: string
