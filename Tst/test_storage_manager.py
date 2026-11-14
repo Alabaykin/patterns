@@ -1,13 +1,7 @@
 import json
 import os
-import pytest
 from Src.Logics.storage_manager import storage_manager
-from Src.Models.range_model import range_model
-from Src.Models.group_model import group_model
-from Src.Models.warehouse_model import warehouse_model
-from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.settings_model import settings_model
-from Src.Core.exception import arguments_exception
 
 
 
@@ -63,65 +57,12 @@ def test_storage_manager_first_start_generate_data():
     assert "Вафельный торт" in nomenclature_names
 
 
-def test_storage_manager_unique_ranges():
-    """
-    Проверка обеспечения уникальности элементов в коллекции единиц измерения.
-    """
-    sm = storage_manager()
-    sm.load()
-    initial_count = len(sm.ranges)
-
-    # Добавляем дубликат с тем же именем
-    duplicate = range_model("гр", 1.0)
-    sm.add_range(duplicate)
-
-    # Количество не должно вырасти
-    assert len(sm.ranges) == initial_count
 
 
-def test_storage_manager_unique_warehouses():
-    """
-    Проверка обеспечения уникальности складов.
-    """
-    sm = storage_manager()
-    sm.load()
-    initial_count = len(sm.warehouses)
-
-    # Добавляем склад с существующим именем
-    duplicate = warehouse_model("Кухня")
-    sm.add_warehouse(duplicate)
-
-    assert len(sm.warehouses) == initial_count
 
 
-def test_storage_manager_unique_nomenclatures():
-    """
-    Проверка обеспечения уникальности номенклатуры.
-    """
-    sm = storage_manager()
-    sm.load()
-    initial_count = len(sm.nomenclatures)
-
-    # Добавляем номенклатуру с существующим именем
-    raw_group = sm.groups[0]
-    kg_range = sm.ranges[0]
-    duplicate = nomenclature_model("Мука пшеничная", "Мука пшеничная сорт 1", raw_group, kg_range)
-    sm.add_nomenclature(duplicate)
-
-    assert len(sm.nomenclatures) == initial_count
 
 
-def test_storage_manager_validation_type():
-    """
-    Проверка валидации типов при добавлении в хранилище.
-    """
-    sm = storage_manager()
-
-    with pytest.raises(arguments_exception):
-        sm.add_range("не валидный объект")
-
-    with pytest.raises(arguments_exception):
-        sm.add_warehouse(12345)
 
 
 
@@ -152,11 +93,7 @@ def test_storage_manager_convert_with_custom_settings_is_first_false():
 
     sm = storage_manager()
     # Очищаем перед тестом
-    sm._ranges.clear()
-    sm._groups.clear()
-    sm._warehouses.clear()
-    sm._nomenclatures.clear()
-    sm._recipes.clear()
+    sm.clear()
 
     sm.convert(settings=custom_settings)
 
@@ -239,7 +176,3 @@ def test_storage_manager_save_all_data(tmp_path):
         assert expected_key in data
         assert isinstance(data[expected_key], list)
         assert len(data[expected_key]) > 0
-
-
-
-

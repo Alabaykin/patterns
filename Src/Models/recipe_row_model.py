@@ -1,4 +1,5 @@
 from __future__ import annotations
+from math import isfinite
 from typing import Self
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
@@ -60,7 +61,8 @@ class recipe_row_model(abstract_entity):
 
     @sub_recipe.setter
     def sub_recipe(self, value) -> None:
-        if value is not None and not hasattr(value, "calculate_gross"):
+        from Src.Models.recipe_model import recipe_model
+        if value is not None and not isinstance(value, recipe_model):
             raise arguments_exception("Вложенный рецепт должен быть объектом recipe_model", "sub_recipe")
         self._sub_recipe = value
 
@@ -99,8 +101,10 @@ class recipe_row_model(abstract_entity):
     def gross(self, value: float) -> None:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise arguments_exception("Вес брутто должен быть числом", "gross")
-        if value <= 0:
+        if not isfinite(value) or value <= 0:
             raise arguments_exception("Вес брутто должен быть положительным числом", "gross")
+        if value < self._net:
+            raise arguments_exception("Брутто не может быть меньше нетто", "gross")
         self._gross = float(value)
 
     @property
@@ -114,8 +118,10 @@ class recipe_row_model(abstract_entity):
     def net(self, value: float) -> None:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise arguments_exception("Вес нетто должен быть числом", "net")
-        if value <= 0:
+        if not isfinite(value) or value <= 0:
             raise arguments_exception("Вес нетто должен быть положительным числом", "net")
+        if value > self._gross:
+            raise arguments_exception("Нетто не может быть больше брутто", "net")
         self._net = float(value)
 
     @staticmethod

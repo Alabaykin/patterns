@@ -5,6 +5,7 @@ from Src.Models.organization_model import organization_model
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.recipe_row_model import recipe_row_model
 from Src.Models.recipe_model import recipe_model
+from Src.Models.settings_model import settings_model
 
 __all__ = [
     "range_model",
@@ -14,4 +15,5 @@ __all__ = [
     "nomenclature_model",
     "recipe_row_model",
     "recipe_model",
+    "settings_model",
 ]

@@ -75,6 +75,8 @@ class abstract_entity(ABC):
         """
         if not value or not isinstance(value, str) or not value.strip():
             raise arguments_exception("Идентификатор должен быть непустой строкой", "id")
+        if any(character in value for character in ("/", "\\")) or any(ord(character) < 32 or ord(character) == 127 for character in value):
+            raise arguments_exception("Код не должен содержать разделители пути или управляющие символы", "id")
         self._id = value.strip()
 
     @property
@@ -103,3 +105,8 @@ class abstract_entity(ABC):
             return False
         return self.id == other.id
 
+    def replace_state(self, source: Self) -> None:
+        """Применить проверенное состояние, сохранив экземпляр и входящие ссылки на него."""
+        if type(source) is not type(self):
+            raise arguments_exception("Тип нового состояния должен совпадать с типом сущности", "source")
+        self.__dict__ = source.__dict__.copy()

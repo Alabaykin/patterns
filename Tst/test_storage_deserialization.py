@@ -1,8 +1,9 @@
 import json
 import pytest
-from Src.Core.exception import arguments_exception, operation_exception
+from Src.Core.exception import arguments_exception, operation_exception, entity_conflict_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.storage_manager import storage_manager
+from Src.Logics.entity_service import entity_service
 from Src.Models.group_model import group_model
 
 
@@ -38,7 +39,7 @@ def test_storage_save_and_load_restores_all_models(tmp_path):
     storage, sources, path = _prepare_storage_file(tmp_path)
     serializer = convert_factory()
     expected = serializer.serialize(sources)
-    storage.add_group(group_model("Группа после сохранения"))
+    entity_service(storage).add(group_model("Группа после сохранения"))
 
     # Действие
     storage.load(str(path))
@@ -76,7 +77,7 @@ def test_storage_load_does_not_depend_on_collection_order(tmp_path):
     # Проверка
     assert convert_factory().serialize(storage.data) == data
     assert [item.id for item in storage.ranges] == [item["id"] for item in data["ranges"]]
-    kilogram = storage.get_by_type_and_id("range", "кг")
+    kilogram = entity_service(storage).get_by_type_and_id("range", "кг")
     assert kilogram.coefficient == 1000.0
     assert kilogram.base_range.name == "гр"
     assert kilogram.base_range.base_range is None
@@ -323,3 +324,66 @@ def test_storage_load_rejects_non_string_file_name():
     with pytest.raises(arguments_exception) as error:
         storage.load(file_name)
     assert error.value.field == "file_name"
+
+
+def test_success_storage_links_are_shared_after_first_start_and_reload(tmp_path):
+    """
+    Справочники и рецепты ссылаются на общие объекты до и после полной загрузки.
+    """
+    # Подготовка
+    storage = storage_manager()
+    storage.load()
+    path = tmp_path / "linked_storage.json"
+
+    for reload_from_file in (False, True):
+        # Действие
+        if reload_from_file:
+            storage.save(str(path))
+            storage.load(str(path))
+
+        # Проверка
+        roots = {item.id: item for values in storage.data.values() for item in values}
+        for item in storage.nomenclatures:
+            assert item.group is roots[item.group.id]
+            assert item.range is roots[item.range.id]
+        for unit in storage.ranges:
+            if unit.base_range is not None:
+                assert unit.base_range is roots[unit.base_range.id]
+        for recipe in storage.recipes:
+            for row in recipe.rows:
+                assert row.nomenclature is roots[row.nomenclature.id]
+                assert row.range is roots[row.range.id]
+        with pytest.raises(entity_conflict_exception):
+            entity_service(storage).delete("group", storage.groups[0].id)
+
+
+def test_raise_storage_load_missing_reference_keeps_previous_state(tmp_path):
+    """
+    Загрузка сущности со ссылкой, отсутствующей в справочнике, не меняет хранилище.
+    """
+    # Подготовка
+    storage, sources, path = _prepare_storage_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["groups"] = []
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    # Действие и проверка
+    with pytest.raises(arguments_exception):
+        storage.load(str(path))
+    _assert_storage_unchanged(storage, sources)
+
+
+def test_raise_storage_load_conflicting_reference_keeps_previous_state(tmp_path):
+    """
+    Две версии одной сущности в выгрузке не подменяются молча при связывании.
+    """
+    # Подготовка
+    storage, sources, path = _prepare_storage_file(tmp_path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["nomenclatures"][0]["group"]["name"] = "Противоречивое имя"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    # Действие и проверка
+    with pytest.raises(arguments_exception):
+        storage.load(str(path))
+    _assert_storage_unchanged(storage, sources)
