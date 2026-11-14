@@ -1,13 +1,10 @@
 import json
 from pathlib import Path
-from uuid import uuid4
 
 from Src.Core.abstract_manager import abstract_manager
 from Src.Core.exception import arguments_exception, operation_exception
 from Src.Models.settings_model import settings_model
-from Src.Models.organization_model import organization_model
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.convert_factory import convert_factory
 
 
 class settings_manager(abstract_manager):
@@ -31,7 +28,9 @@ class settings_manager(abstract_manager):
         try:
             with open(path, "r", encoding="utf-8") as file:
                 data = json.load(file)
-            candidate = self._deserialize(data)
+            candidate = deserialize_factory().deserialize(data)
+            if not isinstance(candidate, settings_model):
+                raise arguments_exception("Ожидается модель настроек", "type")
         except (OSError, UnicodeError, ValueError, arguments_exception) as error:
             raise operation_exception(f"Ошибка при загрузке настроек '{path}': {error}") from error
         self.__data = data
@@ -45,7 +44,9 @@ class settings_manager(abstract_manager):
         """Повторно преобразовать ранее прочитанные данные тем же десериализатором."""
         if not isinstance(self.__data, dict):
             return False
-        candidate = self._deserialize(self.__data)
+        candidate = deserialize_factory().deserialize(self.__data)
+        if not isinstance(candidate, settings_model):
+            raise arguments_exception("Ожидается модель настроек", "type")
         if self._settings is None:
             self._settings = candidate
         else:
@@ -61,28 +62,3 @@ class settings_manager(abstract_manager):
     def settings(self) -> settings_model:
         """Последние успешно загруженные настройки."""
         return self._settings
-
-    def _deserialize(self, data: dict) -> settings_model:
-        """Подготовить прежний формат settings.json для общего десериализатора."""
-        if not isinstance(data, dict):
-            raise arguments_exception("Настройки должны быть JSON-объектом", "data")
-        fields = data.copy()
-        organization = {
-            "type": f"{organization_model.__module__}.{organization_model.__qualname__}",
-            "id": str(uuid4()),
-            "name": fields.pop("company_name", ""),
-            "ownership_type": fields.pop("ownership_type", ""),
-        }
-        for field in ("inn", "bik", "account"):
-            organization[field] = str(fields.pop(field, ""))
-        if "format" in fields:
-            fields.setdefault("response_format", fields.pop("format"))
-        for field in ("boss_name", "account_name"):
-            if not fields.get(field):
-                fields.pop(field, None)
-        payload = convert_factory().serialize(self._settings or settings_model())
-        payload.pop("company")
-        payload.pop("format")
-        payload.update(fields)
-        payload["organization"] = organization
-        return deserialize_factory().create(settings_model().type).deserialize(payload)

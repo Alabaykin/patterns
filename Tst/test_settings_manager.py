@@ -155,23 +155,23 @@ def test_raise_operation_exception_on_missing_file():
 
 def test_success_settings_manager_common_deserialization():
     """
-    Модель настроек поддерживает общую сериализацию и десериализацию.
+    Файл настроек передаётся общему десериализатору без преобразования полей.
     """
     # Подготовка
     manager = settings_manager()
     manager.load()
-    payload = convert_factory().serialize(manager.settings)
+    payload = json.loads((Path(__file__).resolve().parents[1] / "settings.json").read_text(encoding="utf-8"))
 
     # Действие
     restored = deserialize_factory().deserialize(payload)
 
     # Проверка
-    assert convert_factory().serialize(restored) == payload
+    assert convert_factory().serialize(restored) == convert_factory().serialize(manager.settings)
 
 
-def test_success_settings_manager_keeps_instance_and_optional_fields(tmp_path):
+def test_success_settings_manager_keeps_instance_and_model_defaults(tmp_path):
     """
-    Прежний формат настроек сохраняет экземпляр, необязательные поля и значение false.
+    Загрузка сохраняет экземпляр, применяет значения модели по умолчанию и сохраняет false.
     """
     # Подготовка
     manager = settings_manager()
@@ -193,9 +193,9 @@ def test_success_settings_manager_keeps_instance_and_optional_fields(tmp_path):
         assert manager.settings.is_first is False
         assert manager.settings.response_format == report_type_enum.CSV
         assert manager.settings is previous
-        assert manager.settings.boss_name == "Иванов Иван Иванович"
-        assert manager.settings.account_name == "Петров Петр Петрович"
-        assert manager.settings.organization.name == payload["company_name"]
+        assert manager.settings.boss_name == ""
+        assert manager.settings.account_name == ""
+        assert manager.settings.organization.name == payload["organization"]["name"]
     finally:
         manager.load()
 
@@ -210,11 +210,12 @@ def test_raise_settings_manager_keeps_previous_settings_on_invalid_field(tmp_pat
     previous = manager.settings
     expected = convert_factory().serialize(previous)
     path = tmp_path / "bad_settings.json"
-    cases = [("response_format", "pdf"), ("is_first", "false"), ("unknown", 1)]
+    cases = [("response_format", "pdf"), ("is_first", "false"), ("unknown", 1),
+             ("type", "Src.Models.group_model.group_model"), ("organization", 5)]
 
     for field, value in cases:
         data = json.loads((Path(__file__).resolve().parents[1] / "settings.json").read_text(encoding="utf-8"))
-        data["company_name"] = "Другая организация"
+        data["organization"]["name"] = "Другая организация"
         data[field] = value
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
