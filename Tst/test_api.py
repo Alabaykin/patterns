@@ -1,4 +1,4 @@
-from main import app, factory, storage
+from main import app, factory, storage, service
 from Src.Logics.storage_manager import storage_manager
 from Src.Dtos.report_type_enum import report_type_enum
 
@@ -136,7 +136,7 @@ def test_success_get_entities_returns_storage_types():
     """
     with app.test_client() as client:
         # Подготовка
-        expected = storage.entity_types
+        expected = service.entity_types
 
         # Действие
         response = client.get("/api/get_entities")
@@ -164,7 +164,7 @@ def test_success_default_report_preserves_format():
                 original_format = factory.settings.response_format
                 factory.settings.response_format = format_type
                 try:
-                    item = storage.get_by_type_and_id(entity_type, {
+                    item = service.get_by_type_and_id(entity_type, {
                         "range_model": "кг", "nomenclature_model": "Мука пшеничная", "recipe_model": "Песочное тесто",
                         "group_model": "Сырье", "warehouse_model": "Основной склад",
                     }[entity_type])
