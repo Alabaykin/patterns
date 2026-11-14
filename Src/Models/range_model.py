@@ -1,4 +1,5 @@
 from __future__ import annotations
+from math import isfinite
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception, operation_exception
 
@@ -35,7 +36,7 @@ class range_model(abstract_entity):
         """
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise arguments_exception("Коэффициент должен быть числом", "coefficient")
-        if value <= 0:
+        if not isfinite(value) or value <= 0:
             raise arguments_exception("Коэффициент должен быть положительным числом", "coefficient")
         self._coefficient = float(value)
 
@@ -119,4 +120,3 @@ class range_model(abstract_entity):
         Фабричный метод создания единицы 'л'.
         """
         return range_model(name="л", coefficient=1000.0, base_range=range_model.create_milliliter())
-

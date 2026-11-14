@@ -1,236 +1,130 @@
 import json
+from threading import RLock
+from types import MappingProxyType
+from collections.abc import Mapping
+
+from Src.Core.abstract_entity import abstract_entity
 from Src.Core.abstract_manager import abstract_manager
-from Src.Core.exception import arguments_exception, operation_exception
-from Src.Core.validator import validator
+from Src.Core.exception import arguments_exception, entity_conflict_exception, operation_exception
 from Src.Models.range_model import range_model
 from Src.Models.group_model import group_model
 from Src.Models.warehouse_model import warehouse_model
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.recipe_model import recipe_model
-from Src.Models.recipe_row_model import recipe_row_model
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
+from Src.Logics.entity_types import entity_types, entity_links
+from Src.Logics.reference_index import reference_index
 
 
 class storage_manager(abstract_manager):
-    """
-    Менеджер хранилища справочников (Singleton).
-    Хранит уникальные объекты единиц измерения, групп номенклатуры, складов и номенклатуры в оперативной памяти (кэш).
-    """
+    """Кэш объектов с поиском по коду и имени; правила CRUD выполняются сервисом."""
 
-    _collection_models = {
-        "ranges": range_model,
-        "groups": group_model,
-        "warehouses": warehouse_model,
-        "nomenclatures": nomenclature_model,
-        "recipes": recipe_model,
-    }
-
-    @property
-    def entity_types(self) -> list[str]:
-        """Ключи типов моделей, поддерживаемых хранилищем."""
-        return [model.__name__ for model in self._collection_models.values()]
-
-    def __new__(cls, *args, **kwargs):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(storage_manager, cls).__new__(cls)
+    def __new__(cls):
+        """Получить единственный экземпляр кэша."""
+        if not hasattr(cls, "instance"):
+            cls.instance = super().__new__(cls)
         return cls.instance
 
     def __init__(self):
-        if not hasattr(self, '_initialized'):
-            self._ranges: dict[str, range_model] = {}
-            self._groups: dict[str, group_model] = {}
-            self._warehouses: dict[str, warehouse_model] = {}
-            self._nomenclatures: dict[str, nomenclature_model] = {}
-            self._recipes: dict[str, recipe_model] = {}
-            self._is_loaded = False
+        """Создать пустые коллекции, поисковые индексы и номер версии содержимого."""
+        if not hasattr(self, "_initialized"):
+            self.__records = {name: {} for name in entity_types}
+            self.__by_id = {}
+            self.__by_code = {}
+            self.__revision = 0
+            self.__is_loaded = False
+            self.__lock = RLock()
             self._initialized = True
 
     @property
     def ranges(self) -> list[range_model]:
         """Список уникальных единиц измерения."""
-        return list(self._ranges.values())
+        return self.items("ranges")
 
     @property
     def groups(self) -> list[group_model]:
         """Список уникальных групп номенклатуры."""
-        return list(self._groups.values())
+        return self.items("groups")
 
     @property
     def warehouses(self) -> list[warehouse_model]:
         """Список уникальных складов."""
-        return list(self._warehouses.values())
+        return self.items("warehouses")
 
     @property
     def nomenclatures(self) -> list[nomenclature_model]:
         """Список уникальных позиций номенклатуры."""
-        return list(self._nomenclatures.values())
+        return self.items("nomenclatures")
 
     @property
     def recipes(self) -> list[recipe_model]:
         """Список уникальных рецептов (технологических карт)."""
-        return list(self._recipes.values())
+        return self.items("recipes")
 
-    def add_range(self, item: range_model) -> None:
-        """Добавить единицу измерения."""
-        validator.validate(item, range_model)
-        self._ranges[item.name.strip().lower()] = item
-
-    def add_group(self, item: group_model) -> None:
-        """Добавить группу."""
-        validator.validate(item, group_model)
-        self._groups[item.name.strip().lower()] = item
-
-    def add_warehouse(self, item: warehouse_model) -> None:
-        """Добавить склад."""
-        validator.validate(item, warehouse_model)
-        self._warehouses[item.name.strip().lower()] = item
-
-    def add_nomenclature(self, item: nomenclature_model) -> None:
-        """Добавить номенклатуру."""
-        validator.validate(item, nomenclature_model)
-        self._nomenclatures[item.name.strip().lower()] = item
-
-    def add_recipe(self, item: recipe_model) -> None:
-        """Добавить рецепт."""
-        validator.validate(item, recipe_model)
-        self._recipes[item.name.strip().lower()] = item
-
-    def __generate_default_data(self) -> None:
+    def _default_collections(self) -> dict:
         """
         Генерация первичных эталонных данных (первый старт) с использованием фабричных методов.
         Создаются базовые единицы измерения, группы, склады, номенклатура и рецепты
         (включая рецепты с полуфабрикатами и упаковкой).
         """
-        self._ranges.clear()
-        self._groups.clear()
-        self._warehouses.clear()
-        self._nomenclatures.clear()
-        self._recipes.clear()
-
-        # 1. Единицы измерения
-        gramm = range_model.create_gramm()
-        kg = range_model.create_kilogramm()
-        ml = range_model.create_milliliter()
-        liter = range_model.create_liter()
-        piece = range_model.create_piece()
-
-        for r in (gramm, kg, ml, liter, piece):
-            self.add_range(r)
-
-        # 2. Группы номенклатуры
-        raw = group_model.create_raw()
-        semi = group_model.create_semi()
-        dishes = group_model.create_dishes()
-        package = group_model.create_package()
-
-        for g in (raw, semi, dishes, package):
-            self.add_group(g)
-
-        # 3. Склады
-        main_wh = warehouse_model.create_main()
-        kitchen_wh = warehouse_model.create_kitchen()
-        delivery_wh = warehouse_model.create_delivery()
-
-        for w in (main_wh, kitchen_wh, delivery_wh):
-            self.add_warehouse(w)
-
-        # 4. Номенклатура (сырье, полуфабрикаты, блюда, упаковка)
-        flour = nomenclature_model.create_flour()
-        sugar = nomenclature_model.create_sugar()
-        butter = nomenclature_model.create_butter()
-        egg = nomenclature_model.create_egg()
-        vanilla = nomenclature_model.create_vanilla()
-        condensed_milk = nomenclature_model.create_condensed_milk()
-
-        shortcrust_dough = nomenclature_model.create_shortcrust_dough()
-        cream = nomenclature_model.create_cream()
-        waffle_cake = nomenclature_model.create_waffle_cake()
-        cake_box = nomenclature_model.create_cake_box()
-
-        for n in (
-            flour, sugar, butter, egg, vanilla, condensed_milk,
-            shortcrust_dough, cream, waffle_cake, cake_box
-        ):
-            self.add_nomenclature(n)
-
-        # 5. Рецепты
-        dough_recipe = recipe_model.create_dough_recipe()
-        cream_recipe = recipe_model.create_cream_recipe()
-        cake_recipe = recipe_model.create_waffle_cake_recipe()
-
-        for r in (dough_recipe, cream_recipe, cake_recipe):
-            self.add_recipe(r)
-
+        creators = {
+            "ranges": (
+                range_model.create_gramm, range_model.create_kilogramm,
+                range_model.create_milliliter, range_model.create_liter, range_model.create_piece,
+            ),
+            "groups": (group_model.create_raw, group_model.create_semi, group_model.create_dishes, group_model.create_package),
+            "warehouses": (warehouse_model.create_main, warehouse_model.create_kitchen, warehouse_model.create_delivery),
+            "nomenclatures": (
+                nomenclature_model.create_flour, nomenclature_model.create_sugar,
+                nomenclature_model.create_butter, nomenclature_model.create_egg,
+                nomenclature_model.create_vanilla, nomenclature_model.create_condensed_milk,
+                nomenclature_model.create_shortcrust_dough, nomenclature_model.create_cream,
+                nomenclature_model.create_waffle_cake, nomenclature_model.create_cake_box,
+            ),
+            "recipes": (recipe_model.create_dough_recipe, recipe_model.create_cream_recipe, recipe_model.create_waffle_cake_recipe),
+        }
+        collections = {}
+        for name, methods in creators.items():
+            items = [method() for method in methods]
+            collections[name] = {item.name.lower(): item for item in items}
+        return self._link_collections(collections, match_names=True)
 
     def convert(self, settings=None) -> bool:
-        """
-        Обработка данных при первом старте.
-        Если is_first == True, формируются эталонные первичные данные в оперативной памяти (кэш).
-        Параметр settings позволяет передать кастомные настройки (например, в тестах).
-        """
-        if settings is None:
-            sm = settings_manager()
-            if not sm.is_loaded:
-                sm.load()
-            settings = sm.settings
-
-        is_first = True
-        if settings is not None:
-            is_first = settings.is_first
-
-        if is_first:
-            self.__generate_default_data()
-
-        return True
+        """Установить данные первого старта."""
+        with self.__lock:
+            if settings is None:
+                manager = settings_manager()
+                if not manager.is_loaded:
+                    manager.load()
+                settings = manager.settings
+            if settings.is_first:
+                self._replace_all(self._default_collections())
+            return True
 
     @property
     def data(self) -> dict:
-        """
-        Агрегированный словарь всех коллекций хранилища.
-        """
-        return {
-            "ranges": self.ranges,
-            "groups": self.groups,
-            "warehouses": self.warehouses,
-            "nomenclatures": self.nomenclatures,
-            "recipes": self.recipes
-        }
+        """Копии списков всех коллекций в формате файла хранилища."""
+        with self.__lock:
+            return {name: list(items.values()) for name, items in self.__records.items()}
 
     def load(self, file_name: str = "") -> None:
-        """
-        Загрузка моделей из JSON-файла или инициализация хранилища при пустом имени файла.
-        Данные заменяются только после успешного восстановления всех коллекций.
-        """
+        """Заменить содержимое только после полной проверки загружаемых данных."""
         if not isinstance(file_name, str):
             raise arguments_exception("Имя файла должно быть строкой", "file_name")
-        cleaned_file_name = file_name.strip()
-        if not cleaned_file_name:
-            self._is_loaded = self.convert()
-            return
-
-        try:
-            with open(cleaned_file_name, "r", encoding="utf-8") as file:
-                data = json.load(file)
-        except (OSError, UnicodeError, json.JSONDecodeError) as error:
-            raise operation_exception(
-                f"Не удалось загрузить JSON из файла '{cleaned_file_name}': {error}"
-            ) from error
-
-        collections = self._deserialize_collections(data)
-        self._ranges = collections["ranges"]
-        self._groups = collections["groups"]
-        self._warehouses = collections["warehouses"]
-        self._nomenclatures = collections["nomenclatures"]
-        self._recipes = collections["recipes"]
-        self._is_loaded = True
+        with self.__lock:
+            if file_name.strip():
+                self._replace_all(self._load_collections(file_name.strip()))
+                self.__is_loaded = True
+            else:
+                self.__is_loaded = self.convert()
 
     def _deserialize_collections(self, data: dict) -> dict:
         """
         Восстановление коллекций в порядке файла с проверкой типа и уникальности моделей.
         """
-        model_types = self._collection_models
+        model_types = entity_types
         if not isinstance(data, dict):
             raise arguments_exception("Корень JSON хранилища должен быть словарем", "data")
         missing = model_types.keys() - data.keys()
@@ -266,53 +160,161 @@ class storage_manager(abstract_manager):
                 items[key] = item
                 identifiers.add(item.id)
             collections[field] = items
-        return collections
+        return self._link_collections(collections)
 
     def save(self, file_name: str = "storage.json") -> str:
-        """
-        Выгрузка всех данных хранилища в один файл формата JSON.
-        :param file_name: Путь к целевому файлу.
-        :return: Имя сохраненного файла.
-        """
-        validator.validate(file_name, str)
-        cleaned_file_name = file_name.strip()
-        if not cleaned_file_name:
-            cleaned_file_name = "storage.json"
-
-        factory = convert_factory()
-        payload = factory.serialize(self.data)
-        with open(cleaned_file_name, "w", encoding="utf-8") as file:
-            json.dump(payload, file, ensure_ascii=False, indent=2)
-        return cleaned_file_name
+        """Сохранить согласованный снимок коллекций общим сериализатором."""
+        if not isinstance(file_name, str):
+            raise arguments_exception("Имя файла должно быть строкой", "file_name")
+        file_name = file_name.strip() or "storage.json"
+        with self.__lock:
+            with open(file_name, "w", encoding="utf-8") as file:
+                json.dump(convert_factory().serialize(self.data), file, ensure_ascii=False, indent=2)
+        return file_name
 
     @property
     def is_loaded(self) -> bool:
-        return self._is_loaded
+        """Признак успешно загруженного содержимого."""
+        return self.__is_loaded
 
-    def get_by_type_and_id(self, entity_type: str, identifier: str):
-        """
-        Поиск сущности в хранилище по ее типу и идентификатору или наименованию.
-        """
-        if not isinstance(entity_type, str) or not isinstance(identifier, str):
-            return None
+    @property
+    def lock(self):
+        """Блокировка для атомарного выполнения сервисной операции над кэшем и индексом ссылок."""
+        return self.__lock
 
-        t = entity_type.strip().lower()
-        items = []
-        if t in ("номенклатура", "nomenclature", "nomenclature_model"):
-            items = self.nomenclatures
-        elif t in ("единица измерения", "единица_измерения", "единица", "range", "range_model", "unit"):
-            items = self.ranges
-        elif t in ("рецепт", "recipe", "recipe_model"):
-            items = self.recipes
-        elif t in ("группа", "group", "group_model"):
-            items = self.groups
-        elif t in ("склад", "warehouse", "warehouse_model"):
-            items = self.warehouses
-        else:
-            return None
+    @property
+    def revision(self) -> int:
+        """Версия содержимого для обнаружения загрузки или записи другим сервисом."""
+        return self.__revision
 
-        clean_id = identifier.strip().lower()
-        for item in items:
-            if str(item.id).lower() == clean_id or str(item.name).lower() == clean_id:
-                return item
-        return None
+    @property
+    def by_id(self) -> Mapping[str, abstract_entity]:
+        """Представление индекса только для чтения, без копирования всего хранилища."""
+        return MappingProxyType(self.__by_id)
+
+    def _collection(self, name: str) -> dict:
+        """Получить коллекцию по внутреннему ключу без разрешения внешних типов API."""
+        if not isinstance(name, str) or name not in self.__records:
+            raise arguments_exception("Неизвестная коллекция кэша", "collection")
+        return self.__records[name]
+
+    def items(self, collection: str) -> list[abstract_entity]:
+        """Получить копию списка записей одной коллекции."""
+        with self.__lock:
+            return list(self._collection(collection).values())
+
+    def find(self, identifier: str) -> abstract_entity | None:
+        """Найти объект в индексе кодов за постоянное время."""
+        with self.__lock:
+            return self.__by_id.get(identifier)
+
+    def code_owner(self, identifier: str) -> abstract_entity | None:
+        """Найти владельца кода без учёта регистра для проверки уникальности."""
+        with self.__lock:
+            return self.__by_code.get(identifier.lower())
+
+    def name_owner(self, collection: str, name: str) -> abstract_entity | None:
+        """Найти запись по нормализованному имени в одной коллекции."""
+        with self.__lock:
+            return self._collection(collection).get(name.strip().lower())
+
+    def _ensure_unique(self, collection: str, item: abstract_entity, exclude=None) -> None:
+        """Защитить уникальные ключи кэша от перезаписи."""
+        if not isinstance(item, abstract_entity):
+            raise arguments_exception("Ожидается доменная модель", "item")
+        owner = self.code_owner(item.id)
+        if owner is not None and owner is not exclude:
+            raise entity_conflict_exception(f"Код '{item.id}' уже занят")
+        owner = self.name_owner(collection, item.name)
+        if owner is not None and owner is not exclude:
+            raise entity_conflict_exception(f"Наименование '{item.name}' уже занято")
+
+    def insert(self, collection: str, item: abstract_entity) -> None:
+        """Записать подготовленный объект и обновить поисковые индексы."""
+        with self.__lock:
+            self._ensure_unique(collection, item)
+            self._collection(collection)[item.name.lower()] = item
+            self.__by_id[item.id] = item
+            self.__by_code[item.id.lower()] = item
+            self.__revision += 1
+
+    def replace(self, collection: str, target: abstract_entity, candidate: abstract_entity) -> None:
+        """Применить проверенное состояние с сохранением экземпляра и перестройкой его ключей."""
+        with self.__lock:
+            self._ensure_unique(collection, candidate, target)
+            records = self._collection(collection)
+            if records.get(target.name.lower()) is not target or type(target) is not type(candidate):
+                raise arguments_exception("Обновляемый объект не соответствует записи кэша", "target")
+            old_id, old_name = target.id, target.name.lower()
+            del records[old_name]
+            del self.__by_id[old_id]
+            del self.__by_code[old_id.lower()]
+            target.replace_state(candidate)
+            records[target.name.lower()] = target
+            self.__by_id[target.id] = target
+            self.__by_code[target.id.lower()] = target
+            self.__revision += 1
+
+    def remove(self, collection: str, item: abstract_entity) -> None:
+        """Удалить проверенную сервисом запись и её поисковые ключи."""
+        with self.__lock:
+            records = self._collection(collection)
+            if records.get(item.name.lower()) is not item:
+                raise arguments_exception("Удаляемый объект отсутствует в коллекции", "item")
+            del records[item.name.lower()]
+            del self.__by_id[item.id]
+            del self.__by_code[item.id.lower()]
+            self.__revision += 1
+
+    def _replace_all(self, collections: dict) -> None:
+        """Подготовить новые поисковые индексы до атомарной замены всех коллекций."""
+        by_id, by_code = {}, {}
+        for items in collections.values():
+            for item in items.values():
+                if item.id.lower() in by_code:
+                    raise arguments_exception(f"Повторный идентификатор '{item.id}'", "id")
+                by_id[item.id] = item
+                by_code[item.id.lower()] = item
+        self.__records = collections
+        self.__by_id, self.__by_code = by_id, by_code
+        self.__revision += 1
+
+    def clear(self) -> None:
+        """Очистить все коллекции с обновлением версии и поисковых индексов."""
+        with self.__lock:
+            self._replace_all({name: {} for name in self.__records})
+            self.__is_loaded = False
+
+    def _load_collections(self, file_name: str) -> dict:
+        """Прочитать и полностью проверить файл до изменения кэша."""
+        try:
+            with open(file_name, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise operation_exception(f"Не удалось загрузить JSON из файла '{file_name}': {error}") from error
+        return self._deserialize_collections(data)
+
+    def _link_collections(self, collections: dict, match_names: bool = False) -> dict:
+        """Связать временные коллекции общими экземплярами, не затрагивая текущее хранилище."""
+        roots = [item for items in collections.values() for item in items.values()]
+        by_id = {item.id: item for item in roots}
+        if len(by_id) != len(roots):
+            raise arguments_exception("Повторный идентификатор сущности", "id")
+        by_name = {(type(item), item.name.lower()): item for item in roots}
+        serializer = convert_factory()
+        links = []
+        for item in roots:
+            for owner, field in entity_links(item):
+                value = getattr(owner, field)
+                if value is None:
+                    continue
+                target = by_name.get((type(value), value.name.lower())) if match_names else by_id.get(value.id)
+                if target is None or type(target) is not type(value):
+                    raise arguments_exception(f"Ссылка на отсутствующую сущность '{value.name}' ({value.id})", field)
+                if not match_names and serializer.serialize(value) != serializer.serialize(target):
+                    raise arguments_exception(f"Противоречивые данные ссылки '{value.id}'", field)
+                links.append((owner, field, target))
+        for owner, field, target in links:
+            setattr(owner, field, target)
+        reference_index().rebuild(by_id)
+        return collections

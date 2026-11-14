@@ -2,10 +2,124 @@ openapi: 3.0.3
 info:
   title: API «Ромашка»
   version: "1.0"
-  description: Получение списка доменных сущностей и отчётов.
+  description: Отчёты и CRUD доменных сущностей с проверкой ссылочной целостности.
 servers:
   - url: /
 paths:
+  /api/get_report_formats:
+    get:
+      operationId: get_report_formats
+      summary: Получить все доступные форматы отчётов
+      responses:
+        '200':
+          description: Ключи форматов из фабрики отчётов.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example: [txt, markdown, csv, xml, html]
+
+  /api/entities/{entity_type}:
+    parameters:
+      - $ref: '#/components/parameters/EntityType'
+    get:
+      operationId: controller.list_entities
+      summary: Получить все записи выбранного типа
+      responses:
+        '200':
+          description: Список сущностей в формате общей сериализации.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entity'
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+    post:
+      operationId: controller.create_entity
+      summary: Добавить доменную сущность
+      description: >-
+        Тип определяется параметром entity_type. Код создаётся автоматически, если id отсутствует.
+        Ссылки на существующие сущности задаются объектами с id. Строки рецепта передаются
+        внутри rows с полной меткой type; их id можно не указывать.
+      requestBody:
+        $ref: '#/components/requestBodies/EntityBody'
+      responses:
+        '201':
+          description: Созданная сущность.
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/entities/{entity_type}/{entity_id}:
+    parameters:
+      - $ref: '#/components/parameters/EntityType'
+      - name: entity_id
+        in: path
+        required: true
+        description: Код сущности; CRUD не использует поиск по наименованию.
+        schema:
+          $ref: '#/components/schemas/NonBlankString'
+    get:
+      operationId: controller.get_entity
+      summary: Получить сущность по коду
+      responses:
+        '200':
+          description: Полная сериализация сущности.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+    put:
+      operationId: controller.update_entity
+      summary: Изменить доменную сущность
+      description: >-
+        Полная замена полей. Если id отсутствует, прежний код сохраняется.
+        Смена кода запрещена при наличии входящих ссылок. Остальные поля изменяются
+        с сохранением экземпляра сущности. Любая ошибка оставляет хранилище прежним.
+      requestBody:
+        $ref: '#/components/requestBodies/EntityBody'
+      responses:
+        '200':
+          description: Обновлённая сущность.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      operationId: controller.delete_entity
+      summary: Удалить свободную сущность
+      description: Удаление запрещено, если сущность используется другой моделью, в том числе внутри рецепта.
+      responses:
+        '204':
+          description: Сущность удалена.
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /api/get_entities:
     get:
       operationId: get_entities
@@ -101,7 +215,79 @@ paths:
           $ref: '#/components/responses/NotFound'
 
 components:
+  requestBodies:
+    EntityBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EntityInput'
+          examples:
+            group:
+              summary: Группа или склад
+              value:
+                name: Новая группа
+            range:
+              summary: Производная единица измерения
+              value:
+                name: центнер
+                coefficient: 100000
+                base_range:
+                  id: код-грамма-из-GET
+            nomenclature:
+              summary: Номенклатура с существующими ссылками
+              value:
+                name: Новый ингредиент
+                full_name: Полное наименование ингредиента
+                group:
+                  id: код-группы-из-GET
+                range:
+                  id: код-единицы-из-GET
+            recipe:
+              summary: Рецепт со строкой и вложенной картой
+              value:
+                name: Новый рецепт
+                rows:
+                  - type: Src.Models.recipe_row_model.recipe_row_model
+                    nomenclature:
+                      id: код-номенклатуры-из-GET
+                    range:
+                      id: код-единицы-из-GET
+                    gross: 1
+                    net: 0.9
+                    sub_recipe:
+                      id: код-вложенного-рецепта-из-GET
   schemas:
+    EntityInput:
+      type: object
+      required: [name]
+      description: >-
+        Поля выбранной доменной модели. Номенклатура требует full_name, group и range.
+        Единица измерения принимает coefficient и base_range. Рецепт принимает rows,
+        steps, output_range и target_nomenclature. Полный формат можно получить через GET.
+      properties:
+        id:
+          $ref: '#/components/schemas/NonBlankString'
+        type:
+          type: string
+          description: Необязательная полная метка класса; должна соответствовать типу из адреса.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: '\S'
+      additionalProperties: true
+    Entity:
+      type: object
+      required: [id, name, type]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+      additionalProperties: true
     NonBlankString:
       type: string
       minLength: 1
@@ -130,6 +316,18 @@ components:
         $ref: '#/components/schemas/NonBlankString'
       example: кг
   responses:
+    EntityNotFound:
+      description: Тип сущности или код отсутствует в хранилище.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Код или имя заняты, либо сущность используется другими моделями.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Report:
       description: >-
         Отчёт в выбранном формате. Для CSV и Markdown ответ содержит заголовок

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from enum import Enum
 from typing import Any
 from Src.Core.abstract_convert_factory import abstract_convert_factory
 from Src.Core.abstract_convertor import abstract_convertor, _MISSING
@@ -32,6 +33,7 @@ class convert_factory(abstract_convert_factory):
             datetime: datetime_convertor,
             date: datetime_convertor,
             abstract_entity: reference_convertor,
+            Enum: basic_convertor,
         }
 
     @property

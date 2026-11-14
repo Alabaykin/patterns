@@ -1,7 +1,9 @@
 import connexion
 from connexion.resolver import RelativeResolver
 from flask import Response, jsonify, redirect
-from Src.Core.exception import arguments_exception
+from Src.Core.exception import arguments_exception, entity_conflict_exception, entity_not_found_exception
+from Src.Logics.entity_controller import entity_controller
+from Src.Logics.entity_service import entity_service
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.storage_manager import storage_manager
 from Src.Logics.report_factory import report_factory
@@ -14,6 +16,8 @@ settings.load()
 
 storage = storage_manager()
 storage.load()
+service = entity_service(storage)
+controller = entity_controller(service)
 
 factory = report_factory(settings.settings)
 report = factory.create(report_type_enum.TXT)
@@ -32,9 +36,26 @@ def invalid_arguments(error):
     return jsonify(detail=str(error)), 400
 
 
+@app.app.errorhandler(entity_conflict_exception)
+def entity_conflict(error):
+    """Вернуть конфликт уникальности или входящих ссылок."""
+    return jsonify(detail=error.message), 409
+
+
+@app.app.errorhandler(entity_not_found_exception)
+def entity_not_found(error):
+    """Вернуть отсутствие типа или кода сущности."""
+    return jsonify(detail=error.message), 404
+
+
 def get_entities():
     """Получить типы сущностей, поддерживаемых хранилищем."""
-    return jsonify(storage.entity_types)
+    return jsonify(service.entity_types)
+
+
+def get_report_formats():
+    """Получить форматы, зарегистрированные в фабрике отчётов."""
+    return jsonify(factory.formats)
 
 
 def get_default_report(entity: str, unique_code: str):
@@ -61,7 +82,7 @@ def get_entity_report(format_name: str, entity_type: str, entity_id: str):
     except KeyError:
         return Response(f"Неизвестный формат: {format_name}", status=400, mimetype="text/plain; charset=utf-8")
 
-    entity = storage.get_by_type_and_id(entity_type, entity_id)
+    entity = service.get_by_type_and_id(entity_type, entity_id)
     if entity is None:
         return Response(f"Сущность типа '{entity_type}' с id '{entity_id}' не найдена", status=404, mimetype="text/plain; charset=utf-8")
 
@@ -74,7 +95,7 @@ def get_entity_report_default(entity_type: str, entity_id: str):
     """
     Метод GET формирует данные для указанного типа и кода сущности с использованием create_default.
     """
-    entity = storage.get_by_type_and_id(entity_type, entity_id)
+    entity = service.get_by_type_and_id(entity_type, entity_id)
     if entity is None:
         return Response(f"Сущность типа '{entity_type}' с id '{entity_id}' не найдена", status=404, mimetype="text/plain; charset=utf-8")
 

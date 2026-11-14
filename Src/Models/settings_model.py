@@ -2,9 +2,21 @@ from Src.Core.abstract_entity import abstract_entity
 from Src.Core.validator import validator
 from Src.Models.organization_model import organization_model
 from Src.Dtos.report_type_enum import report_type_enum
+from Src.Core.exception import arguments_exception
 
 
 class settings_model(abstract_entity):
+    """Настройки приложения, восстанавливаемые общим механизмом доменных моделей."""
+
+    def __init__(self):
+        """Задать имя модели настроек и безопасные значения по умолчанию."""
+        self.name = "Настройки"
+
+    @classmethod
+    def _create_from_fields(cls, fields: dict):
+        """Создать настройки до заполнения свойств общим from_dict."""
+        return cls()
+
     # Карточка организации
     __organization: organization_model = None
     # Наименование руководителя
@@ -84,6 +96,14 @@ class settings_model(abstract_entity):
 
     @response_format.setter
     def response_format(self, value: report_type_enum) -> None:
+        if isinstance(value, str):
+            key = value.strip().upper()
+            if key == "MD":
+                key = "MARKDOWN"
+            try:
+                value = report_type_enum[key]
+            except KeyError as error:
+                raise arguments_exception("Неизвестный формат отчёта", "response_format") from error
         validator.validate(value, report_type_enum)
         self.__response_format = value
 
@@ -97,5 +117,3 @@ class settings_model(abstract_entity):
     @format.setter
     def format(self, value: report_type_enum) -> None:
         self.response_format = value
-
-

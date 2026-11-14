@@ -1,11 +1,12 @@
 from typing import Any
+from enum import Enum
 from Src.Core.abstract_convertor import abstract_convertor, _MISSING
 from Src.Core.exception import arguments_exception
 
 
 class basic_convertor(abstract_convertor):
     """
-    Конвертор примитивных типов: int, float, str, bool, NoneType.
+    Конвертор примитивных типов и имён элементов перечислений.
     """
 
     ALLOWED_PRIMITIVE_TYPES = (int, float, str, bool)
@@ -20,6 +21,8 @@ class basic_convertor(abstract_convertor):
         """
         Сериализация простого значения.
         """
+        if isinstance(value, Enum):
+            return value.name
         if value is not None and not isinstance(value, self.ALLOWED_PRIMITIVE_TYPES):
             raise arguments_exception(
                 f"Значение имеет неподдерживаемый тип {type(value).__name__} для basic_convertor",
@@ -39,4 +42,3 @@ class basic_convertor(abstract_convertor):
         field = self._validate_field_name(field_name)
         payload = self.serialize_value(value)
         return {field: payload}
-

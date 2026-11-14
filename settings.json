@@ -1,9 +1,16 @@
 {
-  "company_name": "ООО Ромашка",
-  "inn": "1234567890",
-  "bik": "123456789",
-  "account": "12345678901234567890",
-  "ownership_type": "ООО",
+  "type": "Src.Models.settings_model.settings_model",
+  "id": "application-settings",
+  "name": "Настройки",
+  "organization": {
+    "type": "Src.Models.organization_model.organization_model",
+    "id": "company-romashka",
+    "name": "ООО Ромашка",
+    "inn": "1234567890",
+    "bik": "123456789",
+    "account": "12345678901234567890",
+    "ownership_type": "ООО"
+  },
   "boss_name": "Иванов Иван Иванович",
   "account_name": "Петров Петр Петрович",
   "is_first": true,

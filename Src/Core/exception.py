@@ -63,3 +63,11 @@ class operation_exception(app_exception):
 
     def __str__(self) -> str:
         return f"Ошибка выполнения операции!\n{self.message}\n"
+
+
+class entity_conflict_exception(operation_exception):
+    """Операция нарушает уникальность данных или целостность существующих ссылок."""
+
+
+class entity_not_found_exception(operation_exception):
+    """Запрошенный тип сущности или её идентификатор отсутствует в хранилище."""

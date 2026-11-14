@@ -41,3 +41,8 @@ class report_factory(abstract_report_factory):
     def create_default(self) -> abstract_report:
         """Создать построитель формата из настроек."""
         return self.create(self.__settings.response_format)
+
+    @property
+    def formats(self) -> list[str]:
+        """Ключи форматов, для которых фабрика содержит построители."""
+        return [item.name.lower() for item in self.__mapping]
