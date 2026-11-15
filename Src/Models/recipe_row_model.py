@@ -13,6 +13,10 @@ class recipe_row_model(abstract_entity):
     Модель строки рецепта.
     Представляет отдельный ингредиент в рецепте.
     """
+    def get_reference_fields(self) -> list[tuple]:
+        """Ингредиент, единица измерения и вложенная технологическая карта."""
+        return [(self, "nomenclature"), (self, "range"), (self, "sub_recipe")]
+
     _nomenclature: nomenclature_model = None
     _range: range_model = None
     _gross: float = 0.0

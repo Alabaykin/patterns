@@ -2,7 +2,6 @@ from collections.abc import Mapping
 
 from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
-from Src.Logics.entity_types import entity_links
 
 
 class reference_index:
@@ -17,12 +16,10 @@ class reference_index:
     def _dependencies(source: abstract_entity, known: Mapping[str, abstract_entity], existing=None) -> set[str]:
         """Проверить прямые ссылки модели и её строк по индексу хранилища."""
         result = set()
-        for owner, field in entity_links(source):
-            value = getattr(owner, field)
-            if value is not None:
-                if known.get(value.id) is not value:
-                    raise arguments_exception(f"Ссылка на отсутствующую сущность '{value.id}'", "id")
-                result.add(source.id if value is existing else value.id)
+        for value in source.get_references():
+            if known.get(value.id) is not value:
+                raise arguments_exception(f"Ссылка на отсутствующую сущность '{value.id}'", "id")
+            result.add(source.id if value is existing else value.id)
         return result
 
     def rebuild(self, known: Mapping[str, abstract_entity]) -> None:

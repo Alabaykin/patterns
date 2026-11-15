@@ -14,6 +14,13 @@ class recipe_model(abstract_entity):
     Содержит спецификацию ингредиентов (сырье, полуфабрикаты, упаковка),
     пошаговую инструкцию приготовления и методы расчета веса Брутто и Нетто.
     """
+    def get_reference_fields(self) -> list[tuple]:
+        """Ссылки рецепта и принадлежащих ему строк состава."""
+        fields = [(self, "output_range"), (self, "target_nomenclature")]
+        for row in self.rows:
+            fields.extend(row.get_reference_fields())
+        return fields
+
     _rows: list[recipe_row_model] = None
     _steps: str = ""
     _output_range: range_model = None

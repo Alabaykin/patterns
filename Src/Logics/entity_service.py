@@ -4,7 +4,7 @@ from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception, entity_conflict_exception, entity_not_found_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.entity_types import entity_types
+from Src.Logics.entity_registry import entity_registry
 from Src.Logics.reference_index import reference_index
 from Src.Logics.storage_manager import storage_manager
 
@@ -25,6 +25,7 @@ class entity_service:
         if hasattr(self, "_initialized"):
             return
         self.__storage = storage
+        self.__models = entity_registry.get_models(type(storage))
         self.__references = reference_index()
         self.__revision = -1
         with self.__storage.lock:
@@ -34,15 +35,14 @@ class entity_service:
     @property
     def entity_types(self) -> list[str]:
         """Ключи зарегистрированных типов API."""
-        return [model.__name__ for model in entity_types.values()]
+        return [model.__name__ for model in self.__models.values()]
 
-    @staticmethod
-    def _resolve(entity_type: str) -> tuple[str, type]:
+    def _resolve(self, entity_type: str) -> tuple[str, type]:
         """Найти коллекцию и модель по названию типа."""
         if not isinstance(entity_type, str):
             raise arguments_exception("Тип сущности должен быть строкой", "entity_type")
         key = entity_type.strip().lower()
-        for collection, model in entity_types.items():
+        for collection, model in self.__models.items():
             if key in (collection, model.__name__, model.__name__.removesuffix("_model")):
                 return collection, model
         raise entity_not_found_exception(f"Неизвестный тип сущности '{entity_type}'")
@@ -137,7 +137,7 @@ class entity_service:
 
     def add(self, item: abstract_entity) -> None:
         """Добавить готовую модель через ту же десериализацию и проверки, сохранив её экземпляр."""
-        if type(item) not in entity_types.values():
+        if type(item) not in self.__models.values():
             raise arguments_exception("Неподдерживаемый тип модели", "item")
         collection, model = self._resolve(type(item).__name__)
         with self.__storage.lock:

@@ -10,6 +10,10 @@ class nomenclature_model(abstract_entity):
     """
     Модель номенклатуры (сырье, блюдо, полуфабрикат, товар).
     """
+    def get_reference_fields(self) -> list[tuple]:
+        """Группа и единица измерения номенклатуры."""
+        return [(self, "group"), (self, "range")]
+
     _full_name: str = ""
     _group: group_model = None
     _range: range_model = None

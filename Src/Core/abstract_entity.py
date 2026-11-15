@@ -12,6 +12,19 @@ class abstract_entity(ABC):
     _id: str = None
     _name: str = ""
 
+    def get_reference_fields(self) -> list[tuple]:
+        """Вернуть пары (объект, имя поля) для восстановления ссылок при загрузке."""
+        return []
+
+    def get_references(self) -> list["abstract_entity"]:
+        """Вернуть связанные сущности, не раскрывая их собственные зависимости."""
+        references = []
+        for owner, field in self.get_reference_fields():
+            value = getattr(owner, field)
+            if value is not None:
+                references.append(value)
+        return references
+
     @classmethod
     def from_dict(cls, data: dict) -> Self:
         """

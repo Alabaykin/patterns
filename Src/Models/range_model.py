@@ -8,6 +8,10 @@ class range_model(abstract_entity):
     """
     Модель единицы измерения.
     """
+    def get_reference_fields(self) -> list[tuple]:
+        """Базовая единица измерения, от которой зависит текущая."""
+        return [(self, "base_range")]
+
     _coefficient: float = 1.0
     _base_range: range_model = None
 

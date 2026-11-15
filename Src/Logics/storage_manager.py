@@ -14,7 +14,7 @@ from Src.Models.recipe_model import recipe_model
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
-from Src.Logics.entity_types import entity_types, entity_links
+from Src.Logics.entity_registry import entity_registry
 from Src.Logics.reference_index import reference_index
 
 
@@ -30,7 +30,8 @@ class storage_manager(abstract_manager):
     def __init__(self):
         """Создать пустые коллекции, поисковые индексы и номер версии содержимого."""
         if not hasattr(self, "_initialized"):
-            self.__records = {name: {} for name in entity_types}
+            self.__models = entity_registry.get_models(type(self))
+            self.__records = {name: {} for name in self.__models}
             self.__by_id = {}
             self.__by_code = {}
             self.__revision = 0
@@ -85,7 +86,7 @@ class storage_manager(abstract_manager):
             ),
             "recipes": (recipe_model.create_dough_recipe, recipe_model.create_cream_recipe, recipe_model.create_waffle_cake_recipe),
         }
-        collections = {}
+        collections = {name: {} for name in self.__models}
         for name, methods in creators.items():
             items = [method() for method in methods]
             collections[name] = {item.name.lower(): item for item in items}
@@ -124,7 +125,7 @@ class storage_manager(abstract_manager):
         """
         Восстановление коллекций в порядке файла с проверкой типа и уникальности моделей.
         """
-        model_types = entity_types
+        model_types = self.__models
         if not isinstance(data, dict):
             raise arguments_exception("Корень JSON хранилища должен быть словарем", "data")
         missing = model_types.keys() - data.keys()
@@ -304,7 +305,7 @@ class storage_manager(abstract_manager):
         serializer = convert_factory()
         links = []
         for item in roots:
-            for owner, field in entity_links(item):
+            for owner, field in item.get_reference_fields():
                 value = getattr(owner, field)
                 if value is None:
                     continue
