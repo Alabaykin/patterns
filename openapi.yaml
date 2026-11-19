@@ -133,7 +133,7 @@ paths:
                 type: array
                 items:
                   type: string
-              example: [range_model, group_model, warehouse_model, nomenclature_model, recipe_model]
+              example: [range_model, group_model, warehouse_model, nomenclature_model, recipe_model, transaction_model]
 
   /api/get_default_report:
     get:

@@ -37,7 +37,7 @@ def test_success_api_get_report_formats():
 
 def test_success_api_crud_all_entity_types():
     """
-    Создание, список, чтение, изменение и удаление выполняются для всех пяти типов.
+    Создание, список, чтение, изменение и удаление выполняются для всех типов хранилища.
     """
     # Подготовка
     storage.load()
@@ -50,6 +50,11 @@ def test_success_api_crud_all_entity_types():
             "group": {"id": storage.groups[0].id}, "range": {"id": storage.ranges[0].id},
         },
         "recipe_model": {"name": "Тестовый рецепт CRUD", "rows": [_row(storage.nomenclatures[0], storage.ranges[0])]},
+        "transaction_model": {
+            "name": "Тестовая транзакция CRUD", "value": 10, "period": "2026-11-11T00:00:00",
+            "nomenclature": {"id": storage.nomenclatures[0].id},
+            "range": {"id": storage.ranges[0].id}, "storage": {"id": storage.warehouses[0].id},
+        },
     }
     try:
         with app.test_client() as client:

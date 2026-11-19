@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from threading import RLock
 from types import MappingProxyType
 from collections.abc import Mapping
@@ -11,6 +12,7 @@ from Src.Models.group_model import group_model
 from Src.Models.warehouse_model import warehouse_model
 from Src.Models.nomenclature_model import nomenclature_model
 from Src.Models.recipe_model import recipe_model
+from Src.Models.transaction_model import transaction_model
 from Src.Logics.settings_manager import settings_manager
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.deserialize_factory import deserialize_factory
@@ -64,6 +66,11 @@ class storage_manager(abstract_manager):
         """Список уникальных рецептов (технологических карт)."""
         return self.items("recipes")
 
+    @property
+    def transactions(self) -> list[transaction_model]:
+        """Список складских операций."""
+        return self.items("transactions")
+
     def _default_collections(self) -> dict:
         """
         Генерация первичных эталонных данных (первый старт) с использованием фабричных методов.
@@ -90,6 +97,15 @@ class storage_manager(abstract_manager):
         for name, methods in creators.items():
             items = [method() for method in methods]
             collections[name] = {item.name.lower(): item for item in items}
+
+        # Транзакции
+        transaction = transaction_model("Поступление яиц")
+        transaction.range = range_model.create_kilogramm()
+        transaction.value = 10
+        transaction.nomenclature = nomenclature_model.create_egg()
+        transaction.period = datetime(2026, 11, 11)
+        transaction.storage = warehouse_model.create_main()
+        collections["transactions"] = {transaction.name.lower(): transaction}
         return self._link_collections(collections, match_names=True)
 
     def convert(self, settings=None) -> bool:
