@@ -7,6 +7,9 @@ from Src.Logics.deserialize_factory import deserialize_factory
 from Src.Logics.entity_registry import entity_registry
 from Src.Logics.reference_index import reference_index
 from Src.Logics.storage_manager import storage_manager
+from Src.Dtos.filter_dto import filter_dto
+from Src.Logics.prototype import prototype
+from Src.Logics.turnover_prototype import turnover_prototype
 
 
 class entity_service:
@@ -59,6 +62,19 @@ class entity_service:
         """Получить записи выбранного типа."""
         collection, _ = self._resolve(entity_type)
         return self.__storage.items(collection)
+
+    def filter_entities(self, entity_type: str, filter: filter_dto) -> list[abstract_entity]:
+        """Применить один прототип к коллекции выбранного типа."""
+        collection, _ = self._resolve(entity_type)
+        if filter.date_from is not None or filter.date_to is not None:
+            raise arguments_exception("Период применяется только к ОСВ", "date_from")
+        with self.__storage.lock:
+            return prototype(self.__storage.items(collection)).clone(filter).data
+
+    def turnover(self, filter: filter_dto) -> list:
+        """Получить количественную ОСВ с фильтрацией по транзакциям и их ссылкам."""
+        with self.__storage.lock:
+            return turnover_prototype(self.__storage.transactions).clone(filter).data
 
     def get(self, entity_type: str, identifier: str) -> abstract_entity:
         """Получить сущность строго по коду и проверить принадлежность выбранному типу."""
