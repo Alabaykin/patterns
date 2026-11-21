@@ -1,7 +1,9 @@
 from Src.Core.abstract_prototype import abstract_prototype
+from Src.Core.abstract_entity import abstract_entity
 from Src.Core.exception import arguments_exception
 from Src.Core.validator import validator
 from Src.Dtos.filter_dto import filter_dto, filter_item_dto
+from Src.Dtos.filter_type_enum import filter_type_enum
 
 
 class prototype(abstract_prototype):
@@ -10,24 +12,39 @@ class prototype(abstract_prototype):
     def clone(self, filter: filter_dto) -> "prototype":
         """Создать отдельный список, сохраняя ссылки на исходные модели."""
         validator.validate(filter, filter_dto)
-        validator.validate(filter.filters, list)
+        filter.__post_init__()
         result = prototype(self._data)
 
-        # Фильтрация
+        # Проверить условия до обхода: ошибки не зависят от наличия данных.
         for condition in filter.filters:
             validator.validate(condition, filter_item_dto)
-            validator.validate(condition.field_name, str)
-            if condition.field_name.startswith("_"):
-                raise arguments_exception("Ожидается публичное свойство модели", "field_name")
-            if condition.filter_type != "eq":
-                raise arguments_exception("Поддерживается только фильтр eq", "filter_type")
-
-            items = []
-            for item in result._data:
-                if not hasattr(item, condition.field_name):
-                    raise arguments_exception("Свойство модели не найдено", condition.field_name)
-                if getattr(item, condition.field_name) == condition.value:
-                    items.append(item)
-            result._data = items
-
+            condition.__post_init__()
+        result._data = [item for item in result._data if self._matches(item, filter)]
         return result
+
+    @staticmethod
+    def _matches(source: abstract_entity, filter: filter_dto) -> bool:
+        """Проверить все условия по модели и, при необходимости, её зависимостям."""
+        if not isinstance(source, abstract_entity):
+            raise arguments_exception("Ожидается доменная модель", "data")
+        pending = [source]
+        visited = set()
+        matched = set()
+        while pending:
+            item = pending.pop()
+            if id(item) in visited:
+                continue
+            visited.add(id(item))
+            for number, condition in enumerate(filter.filters):
+                value = getattr(item, condition.field_name)
+                if condition.filter_type is filter_type_enum.EQUALS:
+                    success = value == condition.value
+                else:
+                    success = condition.value in value
+                if success:
+                    matched.add(number)
+            if len(matched) == len(filter.filters):
+                return True
+            if filter.recursive:
+                pending.extend(item.get_references())
+        return False

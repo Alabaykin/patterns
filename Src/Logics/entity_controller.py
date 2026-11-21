@@ -4,6 +4,7 @@ from flask import jsonify
 from Src.Core.exception import arguments_exception
 from Src.Logics.convert_factory import convert_factory
 from Src.Logics.entity_service import entity_service
+from Src.Dtos.filter_dto import filter_dto
 
 
 class entity_controller:
@@ -28,6 +29,16 @@ class entity_controller:
     def list_entities(self, entity_type: str):
         """Вернуть все сущности типа в формате общей сериализации."""
         return jsonify(self.__serializer.serialize(self.__service.list_entities(entity_type)))
+
+    def filter_entities(self, entity_type: str, body: dict):
+        """Преобразовать DTO фильтра и вернуть подходящие доменные модели."""
+        result = self.__service.filter_entities(entity_type, filter_dto.from_dict(body))
+        return jsonify(self.__serializer.serialize(result))
+
+    def turnover(self, body: dict):
+        """Вернуть строки количественной ОСВ в JSON."""
+        result = self.__service.turnover(filter_dto.from_dict(body))
+        return jsonify(self.__serializer.serialize(result))
 
     def get_entity(self, entity_type: str, entity_id: str):
         """Вернуть одну сущность по коду."""

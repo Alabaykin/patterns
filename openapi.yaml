@@ -6,6 +6,60 @@ info:
 servers:
   - url: /
 paths:
+  /api/filter/{entity_type}:
+    parameters:
+      - $ref: '#/components/parameters/EntityType'
+    post:
+      operationId: controller.filter_entities
+      summary: Отфильтровать доменные сущности через прототип
+      description: >-
+        Все условия объединяются по И. Каждое ищется в самой модели и, при recursive=true,
+        в её вложенных ссылках: базовых единицах, родительских группах, строках рецептов.
+        Возвращаются исходные корневые модели без повторов. EQUALS и LIKE учитывают регистр;
+        LIKE означает буквальное вхождение строки без шаблонов SQL.
+        Пустой список условий выбирает все записи. Период разрешён только для ОСВ.
+      requestBody:
+        $ref: '#/components/requestBodies/FilterBody'
+      responses:
+        '200':
+          description: Найденные сущности; пустой результат — пустой массив.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/EntityNotFound'
+
+  /api/turnover:
+    post:
+      operationId: controller.turnover
+      summary: Получить количественную оборотно-сальдовую ведомость
+      description: >-
+        Прототип фильтрует транзакции и их ссылки по общему DTO. Каждая строка соответствует
+        складу, номенклатуре и единице измерения; разные единицы не суммируются.
+        Операции до date_from формируют начальный остаток, положительные операции периода —
+        приход, отрицательные — положительную величину расхода. Конечный остаток равен
+        начальному плюс приход минус расход. Обе границы включены. Без date_from начальный
+        остаток равен нулю, без date_to учитываются все последующие операции.
+        Даты без часового пояса считаются UTC. Операции после date_to не учитываются.
+      requestBody:
+        $ref: '#/components/requestBodies/FilterBody'
+      responses:
+        '200':
+          description: Строки количественной ОСВ с учётом фильтра и периода.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TurnoverRow'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/get_report_formats:
     get:
       operationId: get_report_formats
@@ -216,6 +270,35 @@ paths:
 
 components:
   requestBodies:
+    FilterBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Filter'
+          examples:
+            name:
+              summary: Наименование содержит строку
+              value:
+                filters:
+                  - field_name: name
+                    filter_type: LIKE
+                    value: Мука
+                recursive: true
+            code:
+              summary: Точное совпадение кода корневой модели
+              value:
+                filters:
+                  - field_name: id
+                    filter_type: EQUALS
+                    value: код-из-GET
+                recursive: false
+            turnover:
+              summary: ОСВ за ноябрь 2026 года
+              value:
+                filters: []
+                date_from: '2026-11-01T00:00:00Z'
+                date_to: '2026-11-30T23:59:59.999999Z'
     EntityBody:
       required: true
       content:
@@ -258,12 +341,68 @@ components:
                     sub_recipe:
                       id: код-вложенного-рецепта-из-GET
   schemas:
+    Filter:
+      type: object
+      additionalProperties: false
+      properties:
+        filters:
+          type: array
+          default: []
+          items:
+            $ref: '#/components/schemas/FilterItem'
+        recursive:
+          type: boolean
+          default: true
+        date_from:
+          type: string
+          format: date-time
+          description: Начало периода ОСВ включительно.
+        date_to:
+          type: string
+          format: date-time
+          description: Конец периода ОСВ включительно.
+    FilterItem:
+      type: object
+      additionalProperties: false
+      required: [field_name, value]
+      properties:
+        field_name:
+          type: string
+          enum: [name, id]
+        filter_type:
+          type: string
+          enum: [EQUALS, LIKE]
+          default: EQUALS
+        value:
+          type: string
+          minLength: 1
+    TurnoverRow:
+      type: object
+      required: [nomenclature, storage, range, opening_balance, receipt, expense, closing_balance]
+      properties:
+        nomenclature:
+          $ref: '#/components/schemas/Entity'
+        storage:
+          $ref: '#/components/schemas/Entity'
+        range:
+          $ref: '#/components/schemas/Entity'
+        opening_balance:
+          type: number
+        receipt:
+          type: number
+          minimum: 0
+        expense:
+          type: number
+          minimum: 0
+        closing_balance:
+          type: number
     EntityInput:
       type: object
       required: [name]
       description: >-
         Поля выбранной доменной модели. Номенклатура требует full_name, group и range.
-        Единица измерения принимает coefficient и base_range. Рецепт принимает rows,
+        Единица измерения принимает coefficient и base_range. Группа принимает parent.
+        Транзакция требует range, storage, nomenclature, value и period. Рецепт принимает rows,
         steps, output_range и target_nomenclature. Полный формат можно получить через GET.
       properties:
         id:

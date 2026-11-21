@@ -21,6 +21,14 @@ class transaction_model(abstract_entity):
         """Задать имя записи для хранения в общей коллекции сущностей."""
         self.name = name
 
+    @classmethod
+    def _create_from_fields(cls, fields: dict):
+        """Восстановить обязательные реквизиты складской операции из JSON."""
+        result = cls(cls._take_required_field(fields, "name"))
+        for field in ("range", "storage", "nomenclature", "value", "period"):
+            setattr(result, field, cls._take_required_field(fields, field))
+        return result
+
     def get_reference_fields(self) -> list[tuple]:
         """Единица измерения, склад и номенклатура складской операции."""
         return [(self, "range"), (self, "storage"), (self, "nomenclature")]
